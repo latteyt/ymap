@@ -2,6 +2,8 @@
 
 ![Ymap Screenshot](screenshot.png)
 
+> **中文说明** | [简体中文](README_CN.md)
+
 ## Overview
 
 Ymap is a **IPv6 single-packet scanner** written in **modern C++**. While primarily designed for **Internet-wide IPv6 Network Periphery Discovery**, it is also suitable for various IPv6 scanning activities including network research, security assessments, and topology analysis.
