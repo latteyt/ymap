@@ -142,27 +142,7 @@ The input file should contain one IPv6 prefix per line:
 
 ## Output Format
 
-Results are written in CSV format:
-
-```
-<target_ip>,<respondent_ip>,<icmp_type>,<icmp_code>,<ttl>,<rtt_ms>,
-```
-
-| Field | Description |
-|-------|-------------|
-| `target_ip` | The probed IPv6 address |
-| `respondent_ip` | The IPv6 address that responded |
-| `icmp_type` | ICMPv6 type (129 = Echo Reply, 1 = Destination Unreachable, etc.) |
-| `icmp_code` | ICMPv6 code |
-| `ttl` | Hop limit from the response |
-| `rtt_ms` | Round-trip time in milliseconds |
-
-### Example Output
-
-```
-2001:16f8:0004:0780:bf7b:2337:5c91:56d8,2001:16f8:0bb2:003a:0000:0000:0000:0003,1,3,15,3949,
-2a00:1620:0191:7e39:07d4:fc3a:9fa7:9b93,2001:0760:ffff:0164:0000:0000:0000:0003,1,3,17,3953,
-```
+The output format is defined by each probe module's `handle_packet` function. Different modules can output different fields and formats based on their specific requirements. Refer to the module implementation for the exact output format.
 
 ## Architecture
 
