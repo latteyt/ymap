@@ -235,7 +235,7 @@ bool validate_packet(const unsigned char *pkt, size_t len) {
 
     // 匹配：这是 ICMPv6 Echo Reply 吗？
     if (icmp->icmp6_type != ICMP6_ECHO_REPLY) return false;
-    if (ip->ip6_dst != conf.l3_src) return false;
+    if (std::memcmp(&ip->ip6_dst, &conf.l3_src, sizeof(struct in6_addr)) != 0) return false;
 
     return true;
 }
