@@ -18,7 +18,7 @@ struct state_t {
   std::atomic<size_t> total_sent;
   std::atomic<size_t> total_recv;
 
-  size_t total =0;
+  size_t total = 0;
 };
 
 inline state_t state;

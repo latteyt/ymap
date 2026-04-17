@@ -56,7 +56,7 @@ public:
         this->space += (1ULL << (conf.limit - len));
       }
     }
-    state.total = this->space;
+    state.total = conf.repeat * this->space;
   }
   ~sender_t() {}
 
