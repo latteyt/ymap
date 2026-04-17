@@ -196,6 +196,7 @@ struct probe_module_t {
 #include "module_register.hpp"
 #include <netinet/ip6.h>
 #include <netinet/icmp6.h>
+#include <cstring>
 
 static FILE *fp = nullptr;
 
@@ -216,8 +217,8 @@ size_t make_packet(unsigned char *buf, struct in6_addr *dst, uint16_t seq) {
     auto *ip = (struct ip6_hdr *)buf;
     auto *icmp = (struct icmp6_hdr *)(ip + 1);
 
-    ip->ip6_dst = *dst;                          // 目标地址
-    ip->ip6_src = conf.l3_src;                   // 源地址
+    std::memcpy(&ip->ip6_dst, dst, sizeof(struct in6_addr));      // 目标地址
+    std::memcpy(&ip->ip6_src, &conf.l3_src, sizeof(struct in6_addr));  // 源地址
     // ... 设置其他 IPv6 头字段 ...
 
     icmp->icmp6_type = ICMP6_ECHO_REQUEST;
