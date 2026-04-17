@@ -61,13 +61,11 @@ cmake --build build
 
 ## 使用方法
 
-```bash
-./ymap config.ini
-```
+YMap 使用 **INI 格式** 的配置文件来指定运行参数和扫描行为。
 
-### 配置参考
+### 配置说明
 
-创建一个包含以下部分的 `config.ini` 文件：
+创建一个配置文件（例如 `config.ini`），并包含以下几个部分：
 
 #### `[Net]` - 网络设置
 

@@ -61,13 +61,12 @@ The binary will be created at `build/ymap`.
 
 ## Usage
 
-```bash
-./ymap config.ini
-```
+
+YMap uses an **INI-style** configuration file to specify runtime parameters and scanning behavior.
 
 ### Configuration Reference
 
-Create a `config.ini` file with the following sections:
+Create a configuration file (e.g., `config.ini`) with the following sections:
 
 #### `[Net]` - Network Settings
 
