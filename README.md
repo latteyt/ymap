@@ -1,6 +1,4 @@
-# Ymap
-
-A **Fast, Modular and Internet-wide** IPv6 network scanner.
+# Ymap: A **Fast, Modular and Internet-wide** IPv6 network scanner.
 
 ![Ymap Screenshot](screenshot.png)
 
