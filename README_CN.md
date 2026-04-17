@@ -1,4 +1,4 @@
-# Ymap: 一个**快速、模块化、互联网级**的 IPv6 网络扫描器
+# Ymap: 又一个用于 IPv6 互联网的 ZMap
 
 ![Ymap 截图](screenshot.png)
 
