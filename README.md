@@ -1,12 +1,12 @@
-# Ymap: Yet Another ZMap for IPv6
+# YMap: Yet Another ZMap for IPv6
 
-![Ymap Screenshot](screenshot.png)
+![YMap Screenshot](screenshot.png)
 
 > **中文说明** | [简体中文](README_CN.md)
 
 ## Overview
 
-Ymap is a **Moduler IPv6 Single-packet Scanner** written in **modern C++**. While primarily designed for **Internet-wide IPv6 Network Periphery Discovery**, it is also suitable for various IPv6 scanning activities including network research, security assessments, and topology analysis.
+YMap is a **Moduler IPv6 Single-packet Scanner** written in **modern C++**. While primarily designed for **Internet-wide IPv6 Network Periphery Discovery**, it is also suitable for various IPv6 scanning activities including network research, security assessments, and topology analysis.
 
 This tool is the implementation of the research paper:
 
@@ -150,7 +150,7 @@ The output format is defined by each probe module's `handle_packet` function. Di
 
 ### Thread Model
 
-Ymap uses a multi-threaded architecture:
+YMap uses a multi-threaded architecture:
 
 1. **Sender Threads**: Probe target addresses with rate limiting (token bucket)
 2. **Receiver Thread**: Capture response packets using libpcap
@@ -158,7 +158,7 @@ Ymap uses a multi-threaded architecture:
 
 ### Probe Module System
 
-Ymap features a modular probe system that allows **custom payload design**. Each module implements the `probe_module_t` interface:
+YMap features a modular probe system that allows **custom payload design**. Each module implements the `probe_module_t` interface:
 
 ```cpp
 struct probe_module_t {
@@ -273,7 +273,7 @@ Currently supported modules:
 
 ### Address Generation
 
-Ymap uses a **Enhanced** Linear Congruential Generator (LCG) for traversing the **Fragmented** IPv6 address spaces, allowing for deterministic and efficient address space coverage.
+YMap uses a **Enhanced** Linear Congruential Generator (LCG) for traversing the **Fragmented** IPv6 address spaces, allowing for deterministic and efficient address space coverage.
 
 ## Troubleshooting
 
@@ -322,7 +322,7 @@ If you use this tool in your research, please cite:
 
 ```
 @inproceedings{yang2025pruning,
-  title={Pruning as scanning: Towards internet-wide ipv6 network periphery discovery},
+  title={{Pruning as scanning: Towards Internet-wide IPv6 Network Periphery Discovery}},
   author={Yang, Tao and Hu, Ling and Hou, Bingnan and Yang, Zhenzhong and Cai, Zhiping},
   booktitle={Proceedings of the IEEE Conference on Computer Communications},
   pages={1--10},
