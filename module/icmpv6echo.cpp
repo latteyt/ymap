@@ -67,11 +67,9 @@ bool validate_packet(const unsigned char *rx_buf, size_t caplen) {
     return false;
   }
 ICMPv6_ERROR: {
-  std::cout << "1\n";
   if (caplen < sizeof(struct ethhdr) + 2 * sizeof(struct ip6_hdr) +
                    2 * sizeof(struct icmp6_hdr))
     return false;
-  std::cout << "2\n";
   auto *send_ip6h = (struct ip6_hdr *)(recv_icmp6h + 1);
   auto *send_icmp6h = (struct icmp6_hdr *)(send_ip6h + 1);
   if (send_icmp6h->icmp6_seq !=

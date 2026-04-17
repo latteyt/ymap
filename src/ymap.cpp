@@ -50,7 +50,6 @@ int main(int argc, char *argv[]) {
   if (conf.limit > 64)
     throw std::runtime_error("Too Large Limit");
   conf.repeat = pt.get<size_t>("Runtime.repeat", 1); // default once
-  conf.repeat = pt.get<size_t>("Runtime.seed", 42);  // default seed
   conf.shard =
       pt.get<size_t>("Runtime.shard", 1); // default number of send thread
   if (!(conf.shard > 0 && (conf.shard & (conf.shard - 1)) == 0))
@@ -95,7 +94,7 @@ int main(int argc, char *argv[]) {
 
   receiver_t receiver{};
   sender_t sender{};
-  monitor_t monitor(conf.to_string());
+  monitor_t monitor{};
 
   std::thread mn_thread = monitor.run();
   std::thread rx_thread = receiver.run();

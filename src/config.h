@@ -9,18 +9,6 @@
 
 #include "module/module_register.hpp"
 
-#define CLR_RESET "\033[0m"
-#define CLR_BOLD "\033[1m"
-#define CLR_DIM "\033[2m"
-
-#define CLR_TITLE "\033[1;36m" // 标题：cyan
-#define CLR_KEY "\033[1;33m"   // key：yellow
-#define CLR_VAL "\033[0;37m"   // 普通值：white
-#define CLR_NUM "\033[1;32m"   // 数值/速率：green
-#define CLR_WARN "\033[1;31m"  // 异常：red
-#define CLR_NULL "\033[2;31m"  // null/弱提示：dim red
-#define CLR_SEC "\033[2;36m"   // 分区标题：dim cyan
-
 struct config_t {
   struct in6_addr l3_src{};
   struct ether_addr l2_dst{};
@@ -46,44 +34,44 @@ struct config_t {
   config_t &operator=(const config_t &) = delete;
   config_t &operator=(config_t &&) = delete;
 
-  std::string to_string() const {
-    std::ostringstream ss;
-
-    char src_buf[INET6_ADDRSTRLEN] = {};
-    inet_ntop(AF_INET6, &l3_src, src_buf, sizeof(src_buf));
-
-    char dst_buf[18] = {};
-    snprintf(dst_buf, sizeof(dst_buf), "%02x:%02x:%02x:%02x:%02x:%02x",
-             l2_dst.ether_addr_octet[0], l2_dst.ether_addr_octet[1],
-             l2_dst.ether_addr_octet[2], l2_dst.ether_addr_octet[3],
-             l2_dst.ether_addr_octet[4], l2_dst.ether_addr_octet[5]);
-
-    ss << CLR_TITLE
-       << "==================== CONFIG ====================" << CLR_RESET
-       << "\n"
-       << CLR_KEY << "if_name   : " << CLR_VAL << if_name << "\n"
-       << CLR_KEY << "if_index  : " << CLR_NUM << if_index << "\n"
-       << CLR_KEY << "input     : " << CLR_VAL << input << "\n"
-       << CLR_KEY << "output    : "
-       << (output.empty() ? (std::string(CLR_NULL) + "stdout")
-                          : (std::string(CLR_VAL) + output))
-       << CLR_RESET << "\n"
-       << CLR_KEY << "l3_src    : " << CLR_VAL << src_buf << "\n"
-       << CLR_KEY << "l2_dst    : " << CLR_VAL << dst_buf << "\n"
-       << CLR_KEY << "rate      : " << CLR_NUM << rate << "\n"
-       << CLR_KEY << "limit     : " << CLR_NUM << limit << "\n"
-       << CLR_KEY << "repeat    : " << CLR_NUM << repeat << "\n"
-       << CLR_KEY << "seed      : " << CLR_NUM << seed << "\n"
-       << CLR_KEY << "shard     : " << CLR_NUM << shard << "\n"
-       << CLR_KEY << "probe     : "
-       << (probe_module ? (std::string(CLR_VAL) + probe_module->name)
-                        : (std::string(CLR_NULL) + "null"))
-       << CLR_RESET << "\n"
-       << CLR_KEY << "iid mode  : " << CLR_VAL << iid_mode << "\n"
-
-       << CLR_RESET;
-    return ss.str();
-  }
+  // std::string to_string() const {
+  //   std::ostringstream ss;
+  //
+  //   char src_buf[INET6_ADDRSTRLEN] = {};
+  //   inet_ntop(AF_INET6, &l3_src, src_buf, sizeof(src_buf));
+  //
+  //   char dst_buf[18] = {};
+  //   snprintf(dst_buf, sizeof(dst_buf), "%02x:%02x:%02x:%02x:%02x:%02x",
+  //            l2_dst.ether_addr_octet[0], l2_dst.ether_addr_octet[1],
+  //            l2_dst.ether_addr_octet[2], l2_dst.ether_addr_octet[3],
+  //            l2_dst.ether_addr_octet[4], l2_dst.ether_addr_octet[5]);
+  //
+  //   ss << CLR_TITLE
+  //      << "==================== CONFIG ====================" << CLR_RESET
+  //      << "\n"
+  //      << CLR_KEY << "if_name   : " << CLR_VAL << if_name << "\n"
+  //      << CLR_KEY << "if_index  : " << CLR_NUM << if_index << "\n"
+  //      << CLR_KEY << "input     : " << CLR_VAL << input << "\n"
+  //      << CLR_KEY << "output    : "
+  //      << (output.empty() ? (std::string(CLR_NULL) + "stdout")
+  //                         : (std::string(CLR_VAL) + output))
+  //      << CLR_RESET << "\n"
+  //      << CLR_KEY << "l3_src    : " << CLR_VAL << src_buf << "\n"
+  //      << CLR_KEY << "l2_dst    : " << CLR_VAL << dst_buf << "\n"
+  //      << CLR_KEY << "rate      : " << CLR_NUM << rate << "\n"
+  //      << CLR_KEY << "limit     : " << CLR_NUM << limit << "\n"
+  //      << CLR_KEY << "repeat    : " << CLR_NUM << repeat << "\n"
+  //      << CLR_KEY << "seed      : " << CLR_NUM << seed << "\n"
+  //      << CLR_KEY << "shard     : " << CLR_NUM << shard << "\n"
+  //      << CLR_KEY << "probe     : "
+  //      << (probe_module ? (std::string(CLR_VAL) + probe_module->name)
+  //                       : (std::string(CLR_NULL) + "null"))
+  //      << CLR_RESET << "\n"
+  //      << CLR_KEY << "iid mode  : " << CLR_VAL << iid_mode << "\n"
+  //
+  //      << CLR_RESET;
+  //   return ss.str();
+  // }
 };
 
 inline config_t conf;
