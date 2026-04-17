@@ -261,7 +261,7 @@ REGISTER_PROBE_MODULE(my_module);
 | Function | Notes |
 |----------|-------|
 | `module_init` | Access global config via `conf` object; return `false` on failure |
-| `make_packet` | `seq` parameter is a sequence counter from sender; return total packet size |
+| `make_packet` | `seq` parameter is a sequence counter from sender; **return value is the size of packet to send (L3+payload, excluding L2 header)** |
 | `validate_packet` | Parse Ethernet + IPv6 + protocol header; return `true` if response matches |
 | `handle_packet` | Write results to `fp` (opened in `module_init`); use `conf.output` for filename |
 
