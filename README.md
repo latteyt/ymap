@@ -188,7 +188,61 @@ struct probe_module_t {
 4. Use `handle_packet()` to format and output results
 5. Register with `REGISTER_PROBE_MODULE(your_module_name)`
 
+#### Minimal Example
+
 ```cpp
+#include "module_register.hpp"
+#include <netinet/ip6.h>
+#include <netinet/icmp6.h>
+
+static FILE *fp = nullptr;
+
+bool module_init() {
+    // Called once at startup
+    fp = conf.output.empty() ? stdout : fopen(conf.output.c_str(), "w");
+    return fp != nullptr;
+}
+
+void module_clear() {
+    // Called once at shutdown
+    if (fp) { fclose(fp); fp = nullptr; }
+}
+
+size_t make_packet(unsigned char *buf, struct in6_addr *dst, uint16_t seq) {
+    // Build ICMPv6 Echo Request
+    // Returns: size of packet to send (IPv6 header + payload)
+    auto *ip = (struct ip6_hdr *)buf;
+    auto *icmp = (struct icmp6_hdr *)(ip + 1);
+
+    ip->ip6_dst = *dst;                          // Target address
+    ip->ip6_src = conf.l3_src;                   // Source address
+    // ... set other IPv6 header fields ...
+
+    icmp->icmp6_type = ICMP6_ECHO_REQUEST;
+    icmp->icmp6_seq = seq;                       // Use seq for matching
+    // ... set ICMPv6 fields and checksum ...
+
+    return sizeof(struct ip6_hdr) + sizeof(struct icmp6_hdr);  // Return packet size
+}
+
+bool validate_packet(const unsigned char *pkt, size_t len) {
+    // Check if packet is a valid response to our probe
+    auto *ip = (struct ip6_hdr *)(pkt + sizeof(struct ethhdr));
+    auto *icmp = (struct icmp6_hdr *)(ip + 1);
+
+    // Match: is this ICMPv6 Echo Reply to our address?
+    if (icmp->icmp6_type != ICMP6_ECHO_REPLY) return false;
+    if (ip->ip6_dst != conf.l3_src) return false;
+
+    return true;
+}
+
+void handle_packet(const unsigned char *pkt, size_t len) {
+    // Process valid response, write output
+    auto *ip = (struct ip6_hdr *)(pkt + sizeof(struct ethhdr));
+    fprintf(fp, "%s\n", inet_ntop(AF_INET6, &ip->ip6_src, buf, sizeof(buf)));
+}
+
 probe_module_t my_module = {
     .name = "my_module",
     .module_init = module_init,
@@ -201,6 +255,15 @@ probe_module_t my_module = {
 
 REGISTER_PROBE_MODULE(my_module);
 ```
+
+#### Key Points
+
+| Function | Notes |
+|----------|-------|
+| `module_init` | Access global config via `conf` object; return `false` on failure |
+| `make_packet` | `seq` parameter is a sequence counter from sender; return total packet size |
+| `validate_packet` | Parse Ethernet + IPv6 + protocol header; return `true` if response matches |
+| `handle_packet` | Write results to `fp` (opened in `module_init`); use `conf.output` for filename |
 
 Currently supported modules:
 - **icmpv6echo**: ICMPv6 Echo Request/Reply probing (default)
