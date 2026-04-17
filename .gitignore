@@ -18,6 +18,7 @@ compile_commands.json
 # Output
 *.bin
 *.output
+prefix
 
 # OS
 .DS_Store
