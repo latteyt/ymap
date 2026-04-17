@@ -12,8 +12,9 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # 可执行目标
 # =========================
 file(GLOB PROBE_MODULES "module/*.cpp")
+file(GLOB YMAP_SOURCES "src/*.cpp" "src/*.h" "src/*.hpp")
 add_executable(ymap
-  ymap.cpp
+  ${YMAP_SOURCES}
   ${PROBE_MODULES}
 )
 
@@ -32,6 +33,7 @@ target_compile_options(ymap PRIVATE
 # =========================
 target_include_directories(ymap PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
 # =========================
