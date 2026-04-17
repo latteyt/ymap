@@ -258,7 +258,7 @@ If you use this tool in your research, please cite:
 
 ## Status
 
-This software is still under active development. If you encounter any bugs or have feature requests, please report them via [GitHub Issues](https://github.com/anomalyco/ymap/issues).
+This software is still under active development. If you encounter any bugs or have feature requests, please report them via [GitHub Issues](https://github.com/latteyt/ymap/issues).
 
 ## Contact
 
