@@ -156,21 +156,51 @@ Ymap uses a multi-threaded architecture:
 
 ### Probe Module System
 
-Ymap features a modular probe system that allows **custom payload design**. Each module implements:
+Ymap features a modular probe system that allows **custom payload design**. Each module implements the `probe_module_t` interface:
 
 ```cpp
 struct probe_module_t {
-  std::string name;              // Module name
-  bool (*module_init)();         // Initialization
-  void (*module_clear)();        // Cleanup
-  size_t (*make_packet)(...);    // Packet construction
-  void (*handle_packet)(...);    // Response handler
-  bool (*validate_packet)(...);  // Response validator
-  std::string pcap_filter;       // BPF filter string
+  std::string name;                                     // Module name
+  bool (*module_init)();                                // Initialization
+  void (*module_clear)();                               // Cleanup
+  size_t (*make_packet)(unsigned char*, in6_addr*, uint16_t);  // Build probe packet
+  void (*handle_packet)(const unsigned char*, size_t);  // Process response
+  bool (*validate_packet)(const unsigned char*, size_t); // Validate response
+  std::string pcap_filter;                              // BPF filter for libpcap
 };
 ```
 
-You can implement custom modules to define your own probe payloads for different scanning strategies.
+#### Function Lifecycle
+
+| Function | When Called | Purpose |
+|----------|------------|---------|
+| `module_init()` | **Startup** (before scanning begins) | Initialize module state, open output file, allocate resources |
+| `make_packet()` | **Per target** (in sender threads) | Construct probe packet with custom payload for each target address |
+| `validate_packet()` | **Per received packet** (in receiver thread) | Check if packet is a valid response to our probe using hash/sequence matching |
+| `handle_packet()` | **After validation** (in receiver thread) | Extract information from valid response, write to output |
+| `module_clear()` | **Shutdown** (after all scanning completes) | Flush buffers, close files, free resources |
+
+#### Writing a Custom Module
+
+1. Implement all function pointers in `probe_module_t`
+2. Use `make_packet()` to construct your probe payload (return packet size)
+3. Use `validate_packet()` to match responses (hash-based or sequence-based)
+4. Use `handle_packet()` to format and output results
+5. Register with `REGISTER_PROBE_MODULE(your_module_name)`
+
+```cpp
+probe_module_t my_module = {
+    .name = "my_module",
+    .module_init = module_init,
+    .module_clear = module_clear,
+    .make_packet = make_packet,
+    .handle_packet = handle_packet,
+    .validate_packet = validate_packet,
+    .pcap_filter = "ip6 && icmp6",
+};
+
+REGISTER_PROBE_MODULE(my_module);
+```
 
 Currently supported modules:
 - **icmpv6echo**: ICMPv6 Echo Request/Reply probing (default)
