@@ -16,9 +16,7 @@ compile_commands.json
 *.swo
 
 # Output
-*.bin
-*.output
-prefix
+other/
 
 # OS
 .DS_Store

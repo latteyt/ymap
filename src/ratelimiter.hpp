@@ -5,7 +5,7 @@
 #include <mutex>
 #include <thread>
 
-class ratelimiter_t {
+class rate_limiter_t {
 private:
   std::mutex mtx;
   uint32_t tokens;
@@ -35,7 +35,7 @@ private:
   }
 
 public:
-  ratelimiter_t(uint32_t rate) {
+  rate_limiter_t(uint32_t rate) {
     lastRefill = std::chrono::steady_clock::now();
     refillRate = rate;
     tokens = 10000;
@@ -44,8 +44,6 @@ public:
   void pass() {
     while (!consume()) {
       std::this_thread::yield();
-      std::this_thread::sleep_for(
-          std::chrono::microseconds(1000000 / refillRate));
     }
   }
 };

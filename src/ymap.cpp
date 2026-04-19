@@ -44,6 +44,7 @@ int main(int argc, char *argv[]) {
                 &conf.l3_src) != 1)
     throw std::runtime_error("Invalid L3Src");
 
+  // Runtime
   conf.seed = pt.get<size_t>("Runtime.seed", 42);
   conf.rate = pt.get<size_t>("Runtime.rate", 10000); // default 10kpps
   conf.limit = pt.get<size_t>("Runtime.limit", 48);  // default /48
@@ -55,29 +56,16 @@ int main(int argc, char *argv[]) {
   if (!(conf.shard > 0 && (conf.shard & (conf.shard - 1)) == 0))
     throw std::runtime_error("expect a positive power of two (2^n), got " +
                              std::to_string(conf.shard));
-
+  // Scan
   {
-    auto path = pt.get<std::string>("IO.input");
-    std::ifstream in(path);
-    if (!in.is_open())
-      throw std::runtime_error("Invalid Input Path");
-    std::string line;
-    while (std::getline(in, line)) {
-      auto net = boost::asio::ip::make_network_v6(line);
-      if (conf.limit < net.prefix_length())
-        throw std::runtime_error("Invalid Prefix" + line);
-    }
-    conf.input = path;
-  }
-  {
-    auto path = pt.get<std::string>("IO.output", "");
-    if (!path.empty() && std::filesystem::exists(path))
-      throw std::runtime_error("Output Aclready Exists");
-    conf.output = path;
+    auto type = pt.get<std::string>("Scan.type", "ip"); // default is ip list
+    if (type != "net" && type != "ip")
+      throw std::runtime_error("Invalid Scan Type! Only `net` or `ip`");
+    conf.type = type;
   }
   {
     auto &registry = probe_module_registry();
-    std::string module_name = pt.get<std::string>("Scan.type");
+    std::string module_name = pt.get<std::string>("Scan.module");
     auto it = registry.find(module_name);
     if (it == registry.end())
       throw std::runtime_error("Scan Type Not Found");
@@ -85,11 +73,24 @@ int main(int argc, char *argv[]) {
     conf.probe_module->module_init();
   }
   {
-    std::string iid_mode = pt.get<std::string>("IID.mode");
+    auto path = pt.get<std::string>("Scan.input");
+    std::ifstream in(path);
+    if (!in.is_open())
+      throw std::runtime_error("Invalid Input Path");
+    conf.input = path;
+  }
+  {
+    auto path = pt.get<std::string>("Scan.output", "");
+    if (!path.empty() && std::filesystem::exists(path))
+      throw std::runtime_error("Output Aclready Exists");
+    conf.output = path;
+  }
+  {
+    std::string iid = pt.get<std::string>("Scan.iid");
     std::regex re(R"(^(\d+|0[xX][0-9a-fA-F]+)$)");
-    if (!std::regex_match(iid_mode, re) && iid_mode != "rand")
+    if (!std::regex_match(iid, re) && iid != "rand")
       throw std::runtime_error("IID Mode Not Parsed");
-    conf.iid_mode = iid_mode;
+    conf.iid = iid;
   }
 
   receiver_t receiver{};

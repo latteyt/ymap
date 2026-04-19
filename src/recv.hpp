@@ -20,13 +20,6 @@
 #include <netinet/ip6.h>
 #include <pcap.h>
 
-typedef unsigned __int128 uint128_t;
-
-// std::ostream &operator<<(std::ostream &os, uint128_t number) {
-//   os << std::format("{:032x}\n", number);
-//   return os;
-// }
-
 class receiver_t {
 public:
   receiver_t() {
@@ -78,11 +71,6 @@ public:
           throw std::runtime_error("pcap_dispatch error");
         else if (ret == 0)
           std::this_thread::sleep_for(std::chrono::microseconds(500));
-
-        // if (pcap_stats(this->handle, &pcst) == 0) {
-        //   fprintf(stderr, "ps_recv=%u, ps_drop=%u, ps_ifdrop=%u\n",
-        //           pcst.ps_recv, pcst.ps_drop, pcst.ps_ifdrop);
-        // }
 
       } while (state.finish_time == 0 ||
                (current_steady_ms<uint64_t>() - state.finish_time <

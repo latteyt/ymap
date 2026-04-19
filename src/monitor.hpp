@@ -19,6 +19,7 @@
 #define CLR_WARN "\033[1;31m"  // 异常：red
 #define CLR_NULL "\033[2;31m"  // null/弱提示：dim red
 #define CLR_SEC "\033[2;36m"   // 分区标题：dim cyan
+constexpr double EPS = 1e-9;
 
 class monitor_t {
 
@@ -54,7 +55,7 @@ private:
     double drop_rate = (total_drop - last_update_drop) / tick;
 
     double progress = (double)total_sent / (double)state.total;
-    double eta = ((double)state.total - (double)total_sent) / sent_rate;
+    double eta = ((double)state.total - (double)total_sent) / (sent_rate + EPS);
 
     /* displaying */
     fprintf(stderr, "\033[2J\033[H\n"); // clear screen
@@ -78,30 +79,39 @@ private:
             conf.if_name.c_str());
     fprintf(stderr, "     " CLR_KEY "if_index  : " CLR_NUM "%d\n" CLR_RESET,
             conf.if_index);
+    fprintf(stderr, "     " CLR_KEY "l3_src    : " CLR_VAL "%s\n" CLR_RESET,
+            l3_src.c_str());
+    fprintf(stderr, "     " CLR_KEY "l2_dst    : " CLR_VAL "%s\n" CLR_RESET,
+            l2_dst.c_str());
+
+    fprintf(stderr, "     " CLR_KEY "rate      : " CLR_NUM "%zu\n" CLR_RESET,
+            conf.rate);
+    fprintf(stderr, "     " CLR_KEY "repeat    : " CLR_NUM "%zu\n" CLR_RESET,
+            conf.repeat);
+    fprintf(stderr, "     " CLR_KEY "shard     : " CLR_NUM "%zu\n" CLR_RESET,
+            conf.shard);
+    if (conf.type == "net") {
+      fprintf(stderr, "     " CLR_KEY "seed      : " CLR_NUM "%zu\n" CLR_RESET,
+              conf.seed);
+      fprintf(stderr, "     " CLR_KEY "limit     : " CLR_NUM "%zu\n" CLR_RESET,
+              conf.limit);
+    }
+
+    fprintf(stderr, "     " CLR_KEY "type      : " CLR_VAL "%s\n" CLR_RESET,
+            conf.type.c_str());
     fprintf(stderr, "     " CLR_KEY "input     : " CLR_VAL "%s\n" CLR_RESET,
             conf.input.c_str());
     fprintf(stderr, "     " CLR_KEY "output    : %s%s\n" CLR_RESET,
             conf.output.empty() ? CLR_NULL : CLR_VAL,
             conf.output.empty() ? "stdout" : conf.output.c_str());
-    fprintf(stderr, "     " CLR_KEY "l3_src    : " CLR_VAL "%s\n" CLR_RESET,
-            l3_src.c_str());
-    fprintf(stderr, "     " CLR_KEY "l2_dst    : " CLR_VAL "%s\n" CLR_RESET,
-            l2_dst.c_str());
-    fprintf(stderr, "     " CLR_KEY "rate      : " CLR_NUM "%zu\n" CLR_RESET,
-            conf.rate);
-    fprintf(stderr, "     " CLR_KEY "limit     : " CLR_NUM "%zu\n" CLR_RESET,
-            conf.limit);
-    fprintf(stderr, "     " CLR_KEY "repeat    : " CLR_NUM "%zu\n" CLR_RESET,
-            conf.repeat);
-    fprintf(stderr, "     " CLR_KEY "seed      : " CLR_NUM "%zu\n" CLR_RESET,
-            conf.seed);
-    fprintf(stderr, "     " CLR_KEY "shard     : " CLR_NUM "%zu\n" CLR_RESET,
-            conf.shard);
     fprintf(stderr, "     " CLR_KEY "probe     : %s%s\n" CLR_RESET,
             conf.probe_module ? CLR_VAL : CLR_NULL,
             conf.probe_module ? conf.probe_module->name.c_str() : "null");
-    fprintf(stderr, "     " CLR_KEY "iid mode  : " CLR_VAL "%s\n" CLR_RESET,
-            conf.iid_mode.c_str());
+
+    if (conf.type == "net") {
+      fprintf(stderr, "     " CLR_KEY "iid mode  : " CLR_VAL "%s\n" CLR_RESET,
+              conf.iid.c_str());
+    }
 
     fprintf(stderr, CLR_TITLE
             "   ==================== STATUS ====================\n" CLR_RESET);

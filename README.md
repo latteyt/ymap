@@ -18,6 +18,7 @@ This tool is the implementation of the research paper:
 
 - **Single-packet Scanning**: One probe packet per target for efficient, high-speed scanning
 - **Modern C++20**: Written from scratch in clean, modern C++ code
+- **Two Scanning Modes**: Support for prefix-level scanning and IP-level scanning
 - **Modular Architecture**: Pluggable probe modules for custom payloads (ICMPv6, UDP, etc.)
 - **High Performance**: Multi-threaded sending with configurable rate limiting (token bucket algorithm)
 - **IPv6 Native**: Purpose-built for IPv6 address space scanning
@@ -61,8 +62,16 @@ The binary will be created at `build/ymap`.
 
 ## Usage
 
-
 YMap uses an **INI-style** configuration file to specify runtime parameters and scanning behavior.
+
+### Scanning Modes
+
+YMap supports two scanning modes:
+
+| Mode | Description | Input File Format |
+|------|-------------|-------------------|
+| `net` | **Prefix-level scanning**: Generate and scan addresses at specified depth from input prefix list | IPv6 prefixes (e.g., `2001:db8::/32`) |
+| `ip` | **IP-level scanning**: Directly scan each IPv6 address from input file | Full IPv6 addresses (e.g., `2001:db8::1`) |
 
 ### Configuration Reference
 
@@ -76,46 +85,35 @@ Create a configuration file (e.g., `config.ini`) with the following sections:
 | `L2Dst` | Gateway MAC address | `aa:bb:cc:dd:ee:ff` |
 | `IF` | Network interface name | `eth0` |
 
-#### `[IO]` - Input/Output
-
-| Parameter | Description | Example |
-|-----------|-------------|---------|
-| `input` | File containing IPv6 prefixes to scan | `prefix` |
-| `output` | Output file for results (defaults to stdout if not specified) | `output.txt` |
-
 #### `[Runtime]` - Runtime Settings
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `seed` | Random seed for LCG address generation | - |
-| `rate` | Probe rate (packets per second) | 1000 |
-| `limit` | Maximum prefix length to scan | 48 |
+| `seed` | Random seed for LCG address generation (net mode only) | 42 |
+| `rate` | Probe rate (packets per second) | 10000 |
+| `limit` | Prefix length limit to scan (net mode only, max 64) | 48 |
 | `repeat` | Number of scan repetitions | 1 |
-| `shard` | Number of sender threads (power of 2) | 1 |
-
-#### `[IID]` - Interface Identifier
-
-| Parameter | Description | Options |
-|-----------|-------------|---------|
-| `mode` | IID generation mode | `rand`, `0`, `0x1`, etc. |
+| `shard` | Number of sender threads (must be power of 2) | 1 |
 
 #### `[Scan]` - Scan Configuration
 
 | Parameter | Description | Example |
 |-----------|-------------|---------|
-| `type` | Probe module name | `icmpv6echo` |
+| `type` | Scan type: `net` or `ip` | `net` |
+| `module` | Probe module name | `icmpv6echo` |
+| `input` | Input file path | `prefix` or `ips.txt` |
+| `output` | Output file path (defaults to stdout if not specified) | `output.txt` |
+| `iid` | Interface Identifier (IID) mode (net mode only): `rand`, decimal (`0`), or hex (`0x1`) | `rand` |
 
 ### Example Configuration
+
+#### Prefix-level Scanning (net mode)
 
 ```ini
 [Net]
 L3Src   = 2001:db8::1
 L2Dst   = aa:bb:cc:dd:ee:ff
 IF      = eth0
-
-[IO]
-input   = prefix
-output  = output.txt
 
 [Runtime]
 seed    = 12345
@@ -124,21 +122,56 @@ limit   = 48
 repeat  = 1
 shard   = 4
 
-[IID]
-mode    = rand
+[Scan]
+type    = net
+module  = icmpv6echo
+input   = prefix
+output  = output.txt
+iid     = rand
+```
+
+#### IP-level Scanning (ip mode)
+
+```ini
+[Net]
+L3Src   = 2001:db8::1
+L2Dst   = aa:bb:cc:dd:ee:ff
+IF      = eth0
+
+[Runtime]
+rate    = 10000
+repeat  = 1
+shard   = 4
 
 [Scan]
-type    = icmpv6echo
+type    = ip
+module  = icmpv6echo
+input   = ips.txt
+output  = output.txt
 ```
 
 ### Input File Format
 
-The input file should contain one IPv6 prefix per line:
+#### net mode: Prefix file
+
+One IPv6 prefix per line:
 
 ```
 2001:16f8::/32
 2a00:1620::/32
 2001:067c:12e8::/48
+```
+
+With the `limit` parameter, YMap expands each input prefix to the specified depth. For example, with `limit = 48`, `2001:db8::/32` generates 2^16 = 65536 addresses.
+
+#### ip mode: IP file
+
+One IPv6 address per line:
+
+```
+2001:db8::1
+2001:db8::2
+2001:db8::ffff:ffff:ffff:ffff
 ```
 
 ## Output Format
@@ -164,7 +197,7 @@ struct probe_module_t {
   std::string name;                                     // Module name
   bool (*module_init)();                                // Initialization
   void (*module_clear)();                               // Cleanup
-  size_t (*make_packet)(unsigned char*, in6_addr*, uint16_t);  // Build probe packet
+  size_t (*make_packet)(unsigned char*, struct in6_addr*);  // Build probe packet
   void (*handle_packet)(const unsigned char*, size_t);  // Process response
   bool (*validate_packet)(const unsigned char*, size_t); // Validate response
   std::string pcap_filter;                              // BPF filter for libpcap
@@ -210,7 +243,7 @@ void module_clear() {
     if (fp) { fclose(fp); fp = nullptr; }
 }
 
-size_t make_packet(unsigned char *buf, struct in6_addr *dst, uint16_t seq) {
+size_t make_packet(unsigned char *buf, struct in6_addr *dst) {
     // Build ICMPv6 Echo Request
     // Returns: size of packet to send (IPv6 header + payload)
     auto *ip = (struct ip6_hdr *)buf;
@@ -263,7 +296,7 @@ REGISTER_PROBE_MODULE(my_module);
 | Function | Notes |
 |----------|-------|
 | `module_init` | Access global config via `conf` object; return `false` on failure |
-| `make_packet` | `seq` parameter is a sequence counter from sender; **return value is the size of packet to send (L3+payload, excluding L2 header)** |
+| `make_packet` | **return value is the size of packet to send (L3+payload, excluding L2 header)** |
 | `validate_packet` | Parse Ethernet + IPv6 + protocol header; return `true` if response matches |
 | `handle_packet` | Write results to `fp` (opened in `module_init`); use `conf.output` for filename |
 
@@ -272,7 +305,18 @@ Currently supported modules:
 
 ### Address Generation
 
-YMap uses a **Enhanced** Linear Congruential Generator (LCG) for traversing the **Fragmented** IPv6 address spaces, allowing for deterministic and efficient address space coverage.
+#### net mode (Prefix-level Scanning)
+
+YMap uses an **Enhanced** Linear Congruential Generator (LCG) to traverse **Fragmented** IPv6 address spaces, enabling deterministic and efficient address space coverage.
+
+For each input prefix, YMap:
+1. Converts the prefix network address to a starting value (STUN)
+2. Calculates the number of addresses reachable within the `/limit` range
+3. Uses LCG to generate a traversal sequence, ensuring uniform coverage
+
+#### ip mode (IP-level Scanning)
+
+Simply splits the input file by lines across sender threads, with each thread handling its corresponding line range.
 
 ## Troubleshooting
 
@@ -285,7 +329,6 @@ sudo ./build/ymap config.ini
 
 **No responses received**
 - Verify source IPv6 address is correct and reachable
-- Check firewall rules (ICMPv6 must be allowed)
 - Ensure gateway MAC address is correct
 - Try increasing the rate gradually
 
@@ -297,7 +340,7 @@ sudo ./build/ymap config.ini
 
 - Increase `shard` for more sender threads (use power of 2)
 - Adjust `rate` based on network capacity
-- Use appropriate `limit` prefix length to focus scanning
+- Use appropriate `limit` prefix length to focus scanning (net mode only)
 
 ## Contributing
 

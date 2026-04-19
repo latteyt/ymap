@@ -10,7 +10,7 @@ struct probe_module_t {
   std::string name;
   bool (*module_init)();
   void (*module_clear)();
-  size_t (*make_packet)(unsigned char *, struct in6_addr *, uint16_t);
+  size_t (*make_packet)(unsigned char *, struct in6_addr *);
   void (*handle_packet)(const unsigned char *, size_t);
   bool (*validate_packet)(const unsigned char *, size_t);
   std::string pcap_filter;

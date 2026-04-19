@@ -6,7 +6,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <format>
-#include <iostream>
 
 #include <netinet/icmp6.h>
 #include <netinet/in.h>
@@ -136,7 +135,7 @@ ICMPv6_REPLY: {
   return;
 }
 }
-size_t make_packet(unsigned char *tx_buf, struct in6_addr *l3_dst, uint16_t _) {
+size_t make_packet(unsigned char *tx_buf, struct in6_addr *l3_dst) {
 
   struct ip6_hdr *ip6h = (struct ip6_hdr *)tx_buf;
   struct icmp6_hdr *icmp6h = (struct icmp6_hdr *)(ip6h + 1);
