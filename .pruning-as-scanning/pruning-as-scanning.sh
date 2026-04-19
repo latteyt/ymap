@@ -51,8 +51,8 @@ EOF
 
 [[ -z "$IF_NAME" ]] && echo "Error: environment variable 'IF_NAME' is not set" >&2 && exit 1
 
-L3_SRC=$(ip -6 addr show dev "$IF_NAME" | grep "inet6" | grep "global" | awk '{print $2}' | cut -d'/' -f1)
-L2_DST=$(ip -6 neigh show dev "$IF_NAME" | grep "router" | awk '{print $3}')
+L3_SRC=$(ip -6 addr show dev "$IF_NAME" | grep "inet6" | grep "global" | sort -u | awk '{print $2}' | cut -d'/' -f1)
+L2_DST=$(ip -6 neigh show dev "$IF_NAME" | grep "router" | sort -u |  awk '{print $3}')
 
 limits=(32 48 56 64)
 inputs=("IANA.txt" ".pruning-as-scanning/prefix32.txt" ".pruning-as-scanning/prefix48.txt" ".pruning-as-scanning/prefix56.txt")
