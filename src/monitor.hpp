@@ -74,7 +74,7 @@ private:
         conf.l2_dst.ether_addr_octet[4], conf.l2_dst.ether_addr_octet[5]);
 
     fprintf(stderr, CLR_TITLE
-            "   ==================== CONFIG ====================\n" CLR_RESET);
+            "   ========================== CONFIG ==========================\n" CLR_RESET);
     fprintf(stderr, "     " CLR_KEY "if_name   : " CLR_VAL "%s\n" CLR_RESET,
             conf.if_name.c_str());
     fprintf(stderr, "     " CLR_KEY "if_index  : " CLR_NUM "%d\n" CLR_RESET,
@@ -114,7 +114,7 @@ private:
     }
 
     fprintf(stderr, CLR_TITLE
-            "   ==================== STATUS ====================\n" CLR_RESET);
+            "   ========================== STATUS ==========================\n" CLR_RESET);
     fprintf(stderr, "   " CLR_SEC "[Runtime]\n" CLR_RESET);
     fprintf(stderr,
             "     " CLR_KEY "elapsed      : " CLR_NUM "%.2f s\n" CLR_RESET,
@@ -140,7 +140,7 @@ private:
             "     " CLR_KEY "eta          : %s%.2f s (%.2f min)\n" CLR_RESET,
             (eta > 0 ? CLR_VAL : CLR_NULL), eta, eta / 60.0);
     fprintf(stderr, CLR_TITLE
-            "   ===============================================\n" CLR_RESET);
+            "   ===========================================================\n" CLR_RESET);
     fflush(stderr);
     /* updating ... */
 
