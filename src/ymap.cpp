@@ -46,9 +46,9 @@ int main(int argc, char *argv[]) {
     throw std::runtime_error("Invalid L3Src");
 
   // Runtime
-  conf.seed = pt.get<size_t>("Runtime.seed", 42);
   conf.rate = pt.get<size_t>("Runtime.rate", 10000); // default 10kpps
-  conf.limit = pt.get<size_t>("Runtime.limit", 48);  // default /48
+  conf.seed = pt.get<size_t>("Runtime.seed", 42);
+  conf.limit = pt.get<size_t>("Runtime.limit", 48); // default /48
   if (conf.limit > 64)
     throw std::runtime_error("Too Large Limit");
   conf.repeat = pt.get<size_t>("Runtime.repeat", 1); // default once
@@ -86,12 +86,14 @@ int main(int argc, char *argv[]) {
       throw std::runtime_error("Output Aclready Exists");
     conf.output = path;
   }
-  {
+  if (conf.type == "net") {
     std::string iid = pt.get<std::string>("Scan.iid");
     std::regex re(R"(^(\d+|0[xX][0-9a-fA-F]+)$)");
     if (!std::regex_match(iid, re) && iid != "rand")
       throw std::runtime_error("IID Mode Not Parsed");
     conf.iid = iid;
+  } else {
+    conf.iid.clear();
   }
 
   receiver_t receiver{};

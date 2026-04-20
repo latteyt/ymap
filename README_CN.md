@@ -52,6 +52,10 @@ cmake --build build
 
 YMap 只接收一个 INI 配置文件路径作为参数。
 
+示例配置：
+- `config_ips.ini` 对应 `ip` 模式
+- `config_net.ini` 对应 `net` 模式
+
 必填项：
 
 - `Net.IF`
@@ -60,16 +64,16 @@ YMap 只接收一个 INI 配置文件路径作为参数。
 - `Scan.type`
 - `Scan.module`
 - `Scan.input`
-- `Scan.iid`
 
 说明：
 
 - `Scan.type` 必须是 `net` 或 `ip`
-- 即使在 `ip` 模式下，`Scan.iid` 也必须填写
 - `Runtime.shard` 必须是正的 2 的幂
 - `Runtime.limit` 必须 `<= 64`
 - `Scan.output` 可选，不填则输出到 stdout
 - 如果填写了 `Scan.output`，目标文件必须不存在
+- `Scan.iid` 仅在 `net` 模式下使用，`ip` 模式可以省略
+- `Runtime.seed` 和 `Runtime.limit` 仅在 `net` 模式下使用，`ip` 模式可以省略
 
 ### `[Net]`
 

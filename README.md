@@ -52,6 +52,10 @@ Binary: `build/ymap`
 
 YMap takes one INI file path as its only argument.
 
+Example configs:
+- `config_ips.ini` for `ip` mode
+- `config_net.ini` for `net` mode
+
 Required keys:
 
 - `Net.IF`
@@ -60,16 +64,16 @@ Required keys:
 - `Scan.type`
 - `Scan.module`
 - `Scan.input`
-- `Scan.iid`
 
 Notes:
 
 - `Scan.type` must be `net` or `ip`
-- `Scan.iid` is required even in `ip` mode
 - `Runtime.shard` must be a positive power of two
 - `Runtime.limit` must be `<= 64`
 - `Scan.output` is optional; if omitted, output goes to stdout
 - If `Scan.output` is set, the file must not already exist
+- `Scan.iid` is only used in `net` mode; `ip` mode can omit it
+- `Runtime.seed` and `Runtime.limit` are only used in `net` mode; `ip` mode can omit them
 
 ### `[Net]`
 
