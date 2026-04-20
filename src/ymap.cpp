@@ -1,5 +1,6 @@
 
 #include <arpa/inet.h>
+#include <chrono>
 #include <filesystem>
 #include <format>
 #include <fstream>
@@ -112,6 +113,8 @@ int main(int argc, char *argv[]) {
 
   if (rx_thread.joinable())
     rx_thread.join();
+
+  std::this_thread::sleep_for(std::chrono::seconds(3));
 
   if (mn_thread.joinable())
     mn_thread.join();

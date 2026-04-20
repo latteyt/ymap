@@ -21,3 +21,9 @@ other/
 # OS
 .DS_Store
 Thumbs.db
+
+
+# AI
+AGENTS.md
+
+opencode.json

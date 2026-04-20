@@ -34,7 +34,7 @@ static std::string to_string(const struct in6_addr *ip) {
                      ntohs(ip->s6_addr16[6]), ntohs(ip->s6_addr16[7]));
 }
 
-bool module_init() {
+static bool module_init() {
   if (conf.output.empty()) {
     file = stdout;
   } else {
@@ -43,14 +43,14 @@ bool module_init() {
   return file != NULL;
 }
 
-void module_clear() {
+static void module_clear() {
   if (file) {
     fflush(file);
     fclose(file);
   }
 }
 
-bool validate_packet(const unsigned char *rx_buf, size_t caplen) {
+static bool validate_packet(const unsigned char *rx_buf, size_t caplen) {
   auto *recv_ip6h = (struct ip6_hdr *)(rx_buf + sizeof(struct ethhdr));
   auto *recv_icmp6h = (struct icmp6_hdr *)(recv_ip6h + 1);
   /* validate_packet */
@@ -88,7 +88,7 @@ ICMPv6_REPLY: {
 }
 }
 
-void handle_packet(const unsigned char *rx_buf, size_t caplen) {
+static void handle_packet(const unsigned char *rx_buf) {
 
   auto *recv_ip6h = (struct ip6_hdr *)(rx_buf + sizeof(struct ethhdr));
   auto *recv_icmp6h = (struct icmp6_hdr *)(recv_ip6h + 1);
@@ -116,7 +116,6 @@ ICMPv6_ERROR: {
           static_cast<uint16_t>(current_steady_ms<uint16_t>() -
                                 send_icmp6h->icmp6_id));
   fprintf(file, "\n");
-  fflush(file);
   return;
 }
 ICMPv6_REPLY: {
@@ -131,11 +130,11 @@ ICMPv6_REPLY: {
           static_cast<uint16_t>(current_steady_ms<uint16_t>() -
                                 recv_icmp6h->icmp6_id));
   fprintf(file, "\n");
-  fflush(file);
   return;
 }
 }
-size_t make_packet(unsigned char *tx_buf, struct in6_addr *l3_dst) {
+
+static size_t make_packet(unsigned char *tx_buf, struct in6_addr *l3_dst) {
 
   struct ip6_hdr *ip6h = (struct ip6_hdr *)tx_buf;
   struct icmp6_hdr *icmp6h = (struct icmp6_hdr *)(ip6h + 1);
@@ -179,8 +178,8 @@ size_t make_packet(unsigned char *tx_buf, struct in6_addr *l3_dst) {
   return sizeof(struct ip6_hdr) + sizeof(struct icmp6_hdr);
 }
 
-probe_module_t icmpv6echo = {
-    .name = "icmpv6echo",
+probe_module_t icmp6_echo = {
+    .name = "icmp6_echo",
     .module_init = module_init,
     .module_clear = module_clear,
     .make_packet = make_packet,
@@ -189,4 +188,4 @@ probe_module_t icmpv6echo = {
     .pcap_filter = "ip6 && icmp6",
 };
 
-REGISTER_PROBE_MODULE(icmpv6echo)
+REGISTER_PROBE_MODULE(icmp6_echo)
