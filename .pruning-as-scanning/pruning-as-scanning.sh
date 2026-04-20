@@ -24,9 +24,9 @@ filter() {
 
 generate_ini_file() {
   case $1 in
-    32) input="IANA.txt"; repeat=512 ;;
-    48) input=".pruning-as-scanning/prefix32.txt" ; repeat=64 ;;
-    56) input=".pruning-as-scanning/prefix48.txt" ; repeat=16 ;;
+    32) input="IANA.txt"; repeat=256 ;;
+    48) input=".pruning-as-scanning/prefix32.txt" ; repeat=16 ;;
+    56) input=".pruning-as-scanning/prefix48.txt" ; repeat=4 ;;
     64) input=".pruning-as-scanning/prefix56.txt" ; repeat=1 ;;
   esac
 
@@ -38,7 +38,7 @@ IF      = $IF_NAME
 
 [Runtime]
 shard   = 2
-rate    = 100000
+rate    = 200000
 repeat  = $repeat
 
 seed    = 521
