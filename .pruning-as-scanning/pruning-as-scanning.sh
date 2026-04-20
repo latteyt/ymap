@@ -9,7 +9,7 @@ filter() {
   {
     prefix = substr($1, 1, len)
     if ($3 < 128 && prefix == substr($2, 1, len) && !seen[prefix]++) {
-      print prefix, suf
+      printf("%s%s\n", prefix, suf)
     }
   }'
 }
