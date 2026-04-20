@@ -1,4 +1,4 @@
-# YMap
+# YMap: Yet-another ZMap for IPv6
 
 ![YMap Screenshot](screenshot.png)
 
@@ -53,29 +53,47 @@ Binary: `build/ymap`
 YMap takes one INI file path as its only argument.
 
 Example configs:
-- `config_ips.ini` for `ip` mode
-- `config_net.ini` for `net` mode
+- [`config_ips.ini`](./config_ips.ini) for `ip` mode
+  ```ini
+  [Net]
+  L3Src   = 2408:8445:513:26be:6b61:58b5:408:1f62
+  L2Dst   = f2:6e:ff:45:d9:58
+  IF      = wlp59s0
 
-Required keys:
+  [Runtime]
+  shard   = 2
+  rate    = 10
+  repeat  = 1
 
-- `Net.IF`
-- `Net.L2Dst`
-- `Net.L3Src`
-- `Scan.type`
-- `Scan.module`
-- `Scan.input`
+  [Scan]
+  type    = ip
+  module  = udp6_coap
+  input   = other/ips
+  ```
+- [`config_net.ini`](./config_net.ini) for `net` mode
+  ```ini
+  [Net]
+  L3Src   = 2408:8445:513:26be:6b61:58b5:408:1f62
+  L2Dst   = f2:6e:ff:45:d9:58
+  IF      = wlp59s0
 
-Notes:
+  [Runtime]
+  shard   = 2
+  rate    = 200000
+  repeat  = 1
+  seed    = 521
+  limit   = 64
 
-- `Scan.type` must be `net` or `ip`
-- `Runtime.shard` must be a positive power of two
-- `Runtime.limit` must be `<= 64`
-- `Scan.output` is optional; if omitted, output goes to stdout
-- If `Scan.output` is set, the file must not already exist
-- `Scan.iid` is only used in `net` mode; `ip` mode can omit it
-- `Runtime.seed` and `Runtime.limit` are only used in `net` mode; `ip` mode can omit them
+  [Scan]
+  type    = net
+  module  = icmp6_echo
+  input   = IANA.txt
+  iid     = rand
+  ```
 
 ### `[Net]`
+
+These fields are used in both `ip` and `net` modes.
 
 | Key | Meaning |
 |---|---|
@@ -85,22 +103,48 @@ Notes:
 
 ### `[Runtime]`
 
+#### `ip` mode
+
+Use these fields:
+
 | Key | Meaning | Default |
 |---|---|---|
 | `rate` | Probe rate in packets per second | `10000` |
 | `repeat` | Number of repetitions | `1` |
 | `shard` | Sender thread count | `1` |
-| `seed` | Random seed for `net` mode | `42` |
-| `limit` | Prefix expansion depth for `net` mode | `48` |
+
+#### `net` mode
+
+Use all `ip` fields plus these fields:
+
+| Key | Meaning | Default |
+|---|---|---|
+| `seed` | Random seed for prefix traversal | `42` |
+| `limit` | Prefix expansion depth | `48` |
 
 ### `[Scan]`
 
+#### `ip` mode
+
+Use these fields:
+
 | Key | Meaning |
 |---|---|
-| `type` | `net` or `ip` |
+| `type` | Must be `ip` |
 | `module` | Probe module name |
 | `input` | Input file path |
-| `output` | Output file path |
+| `output` | Output file path, optional |
+
+#### `net` mode
+
+Use these fields:
+
+| Key | Meaning |
+|---|---|
+| `type` | Must be `net` |
+| `module` | Probe module name |
+| `input` | Input file path |
+| `output` | Output file path, optional |
 | `iid` | IID mode: `rand`, decimal, or hex |
 
 ## Scan Modes
@@ -152,51 +196,128 @@ Output fields:
 - source port
 - CoAP response class/detail
 
-## Example
 
-```ini
-[Net]
-IF = eth0
-L2Dst = aa:bb:cc:dd:ee:ff
-L3Src = 2001:db8::1
+## Architecture
 
-[Runtime]
-rate = 10000
-repeat = 1
-shard = 4
-seed = 12345
-limit = 48
+### Thread Model
 
-[Scan]
-type = net
-module = udp6_coap
-input = prefix.txt
-output = output.txt
-iid = rand
-```
+YMap uses a multi-threaded architecture:
 
-## Module System
+1. Sender threads probe target addresses with rate limiting.
+2. Receiver thread captures response packets using libpcap.
+3. Monitor thread displays real-time statistics.
 
-Each probe module implements `probe_module_t`:
+### Probe Module System
+
+YMap uses a modular probe system for custom payloads. Each module implements `probe_module_t`:
 
 ```cpp
 struct probe_module_t {
   std::string name;
   bool (*module_init)();
   void (*module_clear)();
-  size_t (*make_packet)(unsigned char*, struct in6_addr*);
-  void (*handle_packet)(const unsigned char*, size_t);
-  bool (*validate_packet)(const unsigned char*, size_t);
+  size_t (*make_packet)(unsigned char *, struct in6_addr *);
+  void (*handle_packet)(const unsigned char *);
+  bool (*validate_packet)(const unsigned char *, size_t);
   std::string pcap_filter;
 };
 ```
 
 Register a module with `REGISTER_PROBE_MODULE(name)`.
 
-## Notes
+#### Function Lifecycle
 
-- `module_init()` opens the output handle.
-- `module_clear()` flushes and closes it.
-- `make_packet()` builds one probe packet per target.
-- `validate_packet()` filters matching responses.
-- `handle_packet()` writes the final result.
+| Function | When Called | Purpose |
+|---|---|---|
+| `module_init()` | Before scanning begins | Initialize module state, open output file, allocate resources |
+| `make_packet()` | Per target, in sender threads | Build the probe packet |
+| `validate_packet()` | Per received packet, in receiver thread | Check whether the packet matches our probe |
+| `handle_packet()` | After validation, in receiver thread | Extract information from a valid response |
+| `module_clear()` | After scanning completes | Flush buffers, close files, free resources |
+
+#### Writing a Custom Module
+
+1. Implement the function pointers in `probe_module_t`.
+2. Use `make_packet()` to construct the probe payload.
+3. Use `validate_packet()` to match responses.
+4. Use `handle_packet()` to format and output results.
+5. Register the module with `REGISTER_PROBE_MODULE(your_module_name)`.
+
+#### Currently Supported Modules
+
+- `icmp6_echo`: ICMPv6 Echo Request/Reply probing
+- `udp6_coap`: UDP/CoAP probing
+
+### Address Generation
+
+#### `net` mode
+
+YMap traverses IPv6 prefix space in a deterministic way and expands each input prefix to the configured `Runtime.limit`.
+
+For each input prefix, YMap:
+1. Converts the prefix network address to a starting value.
+2. Calculates how many addresses are reachable within the `/limit` range.
+3. Uses a traversal sequence to cover the address space.
+
+#### `ip` mode
+
+YMap reads the input file line by line and assigns addresses to sender threads.
+
+## Troubleshooting
+
+### Common Issues
+
+**Permission denied when opening network interface**
+```bash
+sudo ./build/ymap config_net.ini
+```
+
+**No responses received**
+- Verify the source IPv6 address is correct and reachable.
+- Ensure the gateway MAC address is correct.
+- Try increasing the rate gradually.
+
+**libpcap errors**
+- Install libpcap development packages.
+- Verify the network interface name is correct.
+
+### Performance Tuning
+
+- Increase `shard` for more sender threads.
+- Adjust `rate` based on network capacity.
+- Use an appropriate `limit` for `net` mode.
+
+## Contributing
+
+Contributions are welcome. Please ensure:
+
+1. New probe modules follow the `probe_module_t` interface.
+2. Code follows existing style conventions.
+3. Changes are documented.
+
+## License
+
+This work is licensed under **CC BY-NC 4.0**.
+
+For licensing inquiries, please contact the author.
+
+[![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-blue.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
+
+## Citation
+
+If you use this tool in your research, please cite:
+
+```text
+@inproceedings{yang2025pruning,
+  title={{Pruning as scanning: Towards Internet-wide IPv6 Network Periphery Discovery}},
+  author={Yang, Tao and Hu, Ling and Hou, Bingnan and Yang, Zhenzhong and Cai, Zhiping},
+  booktitle={Proceedings of the IEEE Conference on Computer Communications},
+  pages={1--10},
+  year={2025},
+  organization={IEEE}
+}
+```
+
+## Status
+
+This software is still under active development. If you encounter bugs or have feature requests, please report them via GitHub Issues.
