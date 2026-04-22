@@ -14,32 +14,6 @@ YMap 是一个使用现代 C++ 编写的 IPv6 单包扫描器。
 > IEEE INFOCOM 2025
 > [论文](https://ieeexplore.ieee.org/document/11044733)
 
-**Pruning-as-Scanning** 是一种用于在互联网规模上发现 IPv6 网络边缘地址的扫描策略。它主要关注 IPv6 网络边缘的“最后一跳”设备，例如网关和 IoT 设备。
-
-其核心思想很直接：在给定前缀内发送随机生成的探测包，并等待活跃边缘设备的响应。虽然 IPv6 地址空间极其庞大，但数据包转发仍然严格遵循最长前缀匹配规则，而 Pruning-as-Scanning 正是利用了这一点。
-
-当探测预算足够大且采样足够均匀时，这种方法可以在较低漏检率下覆盖极大的地址空间。关于完整的理论分析和推导，请参见原论文。
-
-要复现实验，请运行仓库根目录下的辅助脚本：
-
-```bash
-bash .pruning-as-scanning/pruning-as-scanning.sh
-```
-
-运行前请先设置 `IF_NAME`，指定用于探测的网络接口。
-
-脚本会生成四个结果文件：`scan32.txt`、`scan48.txt`、`scan56.txt` 和 `scan64.txt`。
-
-如果提取这些文件的第二列并去重，就可以得到发现的 IPv6 网络边缘地址集合。
-
-由于使用常规工具对大规模结果集去重可能较慢，作者提供了一个基于 Blocked Bloom Filter 的专用工具：[buniq](https://github.com/latteyt/buniq)
-
-安装后，可以使用下面的命令高效去重：
-
-```bash
-mawk -F, '$3<128{print $2}' scan* | buniq
-```
-
 ## 功能
 
 - 单包扫描
@@ -341,6 +315,34 @@ sudo ./build/ymap config_net.ini
 1. 新模块遵循 `probe_module_t` 接口。
 2. 代码符合现有风格。
 3. 记录更改内容。
+
+## Pruning-as-Scanning 策略
+
+Pruning-as-Scanning 是一种用于在互联网规模上发现 IPv6 网络边缘地址的扫描策略。它主要关注 IPv6 网络边缘的“最后一跳”设备，例如网关和 IoT 设备。
+
+其核心思想很直接：在给定前缀内发送随机生成的探测包，并等待活跃边缘设备的响应。虽然 IPv6 地址空间极其庞大，但数据包转发仍然严格遵循最长前缀匹配规则，而 Pruning-as-Scanning 正是利用了这一点。
+
+当探测预算足够大且采样足够均匀时，这种方法可以在较低漏检率下覆盖极大的地址空间。关于完整的理论分析和推导，请参见原论文。
+
+要复现实验，请运行仓库根目录下的辅助脚本：
+
+```bash
+bash .pruning-as-scanning/pruning-as-scanning.sh
+```
+
+运行前请先设置 `IF_NAME`，指定用于探测的网络接口。
+
+脚本会生成四个结果文件：`scan32.txt`、`scan48.txt`、`scan56.txt` 和 `scan64.txt`。
+
+如果提取这些文件的第二列并去重，就可以得到发现的 IPv6 网络边缘地址集合。
+
+由于使用常规工具对大规模结果集去重可能较慢，作者提供了一个基于 Blocked Bloom Filter 的专用工具：[buniq](https://github.com/latteyt/buniq)
+
+安装后，可以使用下面的命令高效去重：
+
+```bash
+mawk -F, '$3<128{print $2}' scan* | buniq
+```
 
 ## 许可证
 

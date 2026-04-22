@@ -14,31 +14,6 @@ This project implements the paper:
 > IEEE INFOCOM 2025
 > [Paper](https://ieeexplore.ieee.org/document/11044733)
 
-The _Pruning-as-Scanning_ approach is a scanning strategy designed to discover IPv6 network periphery addresses at Internet scale. It focuses on the _last-hop_ devices at IPv6 network periphery, such as gateways and IoT devices.
-
-The core idea is straightforward: send randomly generated probes within a given prefix and wait for responses from IPv6 Network periphery. Although the IPv6 address space is extremely large, **packet forwarding still follows the longest-prefix matching rule**, and **Pruning-as-Scanning** exploits exactly that property.
-
-When the probe budget is large enough and the sampling is sufficiently uniform, this approach can uncover IPv6 periphery devices across a very large address space with relatively few misses, _without requiring any seeds_. See the paper for the full theory and derivation.
-
-To reproduce the experiments described in the paper, run the helper script located in the repository root:
-
-```bash
-bash .pruning-as-scanning/pruning-as-scanning.sh
-```
-
-Before running it, set `IF_NAME` to the network interface used for probing.
-
-The script produces four result files: `scan32.txt`, `scan48.txt`, `scan56.txt`, and `scan64.txt`.
-
-If you extract the second column from these files and remove duplicates, you obtain the discovered set of IPv6 network periphery addresses.
-
-Deduplicating large result sets with standard tools can be slow, so the author provides a specialized utility based on a blocked Bloom filter: [buniq](https://github.com/latteyt/buniq)
-
-After installing it, you can deduplicate efficiently with:
-
-```bash
-mawk -F, '$3<128{print $2}' scan* | buniq
-```
 
 ## Features
 
@@ -342,6 +317,37 @@ Contributions are welcome. Please ensure:
 1. New probe modules follow the `probe_module_t` interface.
 2. Code follows existing style conventions.
 3. Changes are documented.
+
+
+
+## The Pruning-as-Scanning Strategy
+
+
+The _Pruning-as-Scanning_ approach is a scanning strategy designed to discover IPv6 network periphery addresses at Internet scale. It focuses on the _last-hop_ devices at IPv6 network periphery, such as gateways and IoT devices.
+
+The core idea is straightforward: send randomly generated probes within a given prefix and wait for responses from IPv6 Network periphery. Although the IPv6 address space is extremely large, **packet forwarding still follows the longest-prefix matching rule**, and **Pruning-as-Scanning** exploits exactly that property.
+
+When the probe budget is large enough and the sampling is sufficiently uniform, this approach can uncover IPv6 periphery devices across a very large address space with relatively few misses, _without requiring any seeds_. See the paper for the full theory and derivation.
+
+To reproduce the experiments described in the paper, run the helper script located in the repository root:
+
+```bash
+bash .pruning-as-scanning/pruning-as-scanning.sh
+```
+
+Before running it, set `IF_NAME` to the network interface used for probing.
+
+The script produces four result files: `scan32.txt`, `scan48.txt`, `scan56.txt`, and `scan64.txt`.
+
+If you extract the second column from these files and remove duplicates, you obtain the discovered set of IPv6 network periphery addresses.
+
+Deduplicating large result sets with standard tools can be slow, so the author provides a specialized utility based on a blocked Bloom filter: [buniq](https://github.com/latteyt/buniq)
+
+After installing it, you can deduplicate efficiently with:
+
+```bash
+mawk -F, '$3<128{print $2}' scan* | buniq
+```
 
 ## License
 
