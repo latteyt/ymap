@@ -191,20 +191,22 @@ public:
         auto beg = this->ranges[offset].beg;
         auto end = this->ranges[offset].end;
         std::ifstream in(conf.input);
-        in.seekg(beg);
         std::string line;
-
-        while (static_cast<size_t>(in.tellg()) < end &&
-               std::getline(in, line)) {
-          if (inet_pton(AF_INET6, line.c_str(), &l3_dst) == 1) {
-            size_t len = conf.probe_module->make_packet(tx_buf, &l3_dst);
-            rate_limiter.pass();
-            if (sendto(fd, tx_buf, len, 0, (struct sockaddr *)&tx_sockaddr,
-                       sizeof(struct sockaddr_ll)) < 0)
-              throw std::system_error(errno, std::system_category(),
-                                      "sendto() failed");
+        for (size_t _ = 0; _ < conf.repeat; ++_) {
+          in.close();
+          in.seekg(beg);
+          while (static_cast<size_t>(in.tellg()) < end &&
+                 std::getline(in, line)) {
+            if (inet_pton(AF_INET6, line.c_str(), &l3_dst) == 1) {
+              size_t len = conf.probe_module->make_packet(tx_buf, &l3_dst);
+              rate_limiter.pass();
+              if (sendto(fd, tx_buf, len, 0, (struct sockaddr *)&tx_sockaddr,
+                         sizeof(struct sockaddr_ll)) < 0)
+                throw std::system_error(errno, std::system_category(),
+                                        "sendto() failed");
+            }
+            state.total_sent.fetch_add(1, std::memory_order_relaxed);
           }
-          state.total_sent.fetch_add(1, std::memory_order_relaxed);
         }
       }
     });
