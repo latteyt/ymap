@@ -6,6 +6,12 @@ check_file_exists() {
   fi
 }
 
+AWK_BIN="$(command -v mawk || command -v awk)"
+if [[ -z "$AWK_BIN" ]]; then
+  echo "Error: neither mawk nor awk was found" >&2
+  exit 1
+fi
+
 # Keep only prefixes whose responses share the same prefix fingerprint.
 # This is the pruning step that decides which prefixes should be explored deeper.
 # `filter` checks whether the discovered periphery and the target address
@@ -19,7 +25,7 @@ filter() {
     *) echo "Error: invalid limit '$1' in filter" >&2; exit 1 ;;
   esac
 
-  awk -F, -v len="$str_len" -v suf="$suffix" '
+  "$AWK_BIN" -F, -v len="$str_len" -v suf="$suffix" '
   {
     prefix = substr($1, 1, len)
     if ($3 < 128 && prefix == substr($2, 1, len) && !seen[prefix]++) {
@@ -40,24 +46,24 @@ generate_ini_file() {
   esac
 
   cat <<EOF > ".pruning-as-scanning/scan$1.ini"
-[Net]
-L3Src   = $L3_SRC
-L2Dst   = $L2_DST
-IF      = $IF_NAME
+[Interface]
+name    = $IF_NAME
+l2_dst  = $L2_DST
+l3_src  = $L3_SRC
 
 [Runtime]
 shard   = $SHARD
 rate    = $SCAN_RATE
 repeat  = $repeat
 
-seed    = $SEED
-limit   = $1
-
 [Scan]
 type    = net
-module  = icmpv6echo
+module  = icmp6_echo
 input   = $input
 
+[Optional]
+seed    = $SEED
+limit   = $1
 iid     = rand
 EOF
 }
@@ -82,8 +88,8 @@ if [[ ! "$SEED" =~ ^[0-9]+$ ]]; then
   exit 1
 fi
 
-L3_SRC=$(ip -6 addr show dev "$IF_NAME" | grep "inet6" | grep "global" |  awk '!seen[$2]++{print $2}' | cut -d'/' -f1)
-L2_DST=$(ip -6 neigh show dev "$IF_NAME" | grep "router" | awk '!seen[$3]++{print $3}')
+L3_SRC=$(ip -6 addr show dev "$IF_NAME" | grep "inet6" | grep "global" |  "$AWK_BIN" '!seen[$2]++{print $2}' | cut -d'/' -f1)
+L2_DST=$(ip -6 neigh show dev "$IF_NAME" | grep "router" | "$AWK_BIN" '!seen[$3]++{print $3}')
 
 limits=(32 48 56 64)
 

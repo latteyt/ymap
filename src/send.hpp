@@ -79,6 +79,8 @@ public:
 
       size_t total_size = std::filesystem::file_size(conf.input);
       size_t shard_line = total_line / conf.shard;
+      if (shard_line == 0)
+        throw std::runtime_error("Input lines are fewer than shards");
       size_t count = 0;
       do {
         if (count % shard_line == 0)
@@ -193,7 +195,7 @@ public:
         std::ifstream in(conf.input);
         std::string line;
         for (size_t _ = 0; _ < conf.repeat; ++_) {
-          in.close();
+          in.clear();
           in.seekg(beg);
           while (static_cast<size_t>(in.tellg()) < end &&
                  std::getline(in, line)) {

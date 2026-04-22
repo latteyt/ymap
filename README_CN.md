@@ -12,7 +12,33 @@ YMap 是一个使用现代 C++ 编写的 IPv6 单包扫描器。
 
 > **Pruning as Scanning: Towards Internet-Wide IPv6 Network Periphery Discovery**
 > IEEE INFOCOM 2025
-> [[论文]](https://ieeexplore.ieee.org/document/11044733)
+> [论文](https://ieeexplore.ieee.org/document/11044733)
+
+**Pruning-as-Scanning** 是一种用于在互联网规模上发现 IPv6 网络边缘地址的扫描策略。它主要关注 IPv6 网络边缘的“最后一跳”设备，例如网关和 IoT 设备。
+
+其核心思想很直接：在给定前缀内发送随机生成的探测包，并等待活跃边缘设备的响应。虽然 IPv6 地址空间极其庞大，但数据包转发仍然严格遵循最长前缀匹配规则，而 Pruning-as-Scanning 正是利用了这一点。
+
+当探测预算足够大且采样足够均匀时，这种方法可以在较低漏检率下覆盖极大的地址空间。关于完整的理论分析和推导，请参见原论文。
+
+要复现实验，请运行仓库根目录下的辅助脚本：
+
+```bash
+bash .pruning-as-scanning/pruning-as-scanning.sh
+```
+
+运行前请先设置 `IF_NAME`，指定用于探测的网络接口。
+
+脚本会生成四个结果文件：`scan32.txt`、`scan48.txt`、`scan56.txt` 和 `scan64.txt`。
+
+如果提取这些文件的第二列并去重，就可以得到发现的 IPv6 网络边缘地址集合。
+
+由于使用常规工具对大规模结果集去重可能较慢，作者提供了一个基于 Blocked Bloom Filter 的专用工具：[buniq](https://github.com/latteyt/buniq)
+
+安装后，可以使用下面的命令高效去重：
+
+```bash
+mawk -F, '$3<128{print $2}' scan* | buniq
+```
 
 ## 功能
 
@@ -53,12 +79,12 @@ cmake --build build
 YMap 只接收一个 INI 配置文件路径作为参数。
 
 示例配置：
-- [`config_ips.ini`](./config_ips.ini) 对应 `ip` 模式
+- [`config_ips.ini`](./config_ips.ini) 对应带 `tcp6_syn` 的 `ip` 模式
   ```ini
-  [Net]
-  L3Src   = 2408:8445:513:26be:6b61:58b5:408:1f62
-  L2Dst   = f2:6e:ff:45:d9:58
-  IF      = wlp59s0
+  [Interface]
+  l3_src  = 2408:8445:513:26be:6b61:58b5:408:1f62
+  l2_dst  = f2:6e:ff:45:d9:58
+  name    = wlp59s0
 
   [Runtime]
   shard   = 2
@@ -67,39 +93,44 @@ YMap 只接收一个 INI 配置文件路径作为参数。
 
   [Scan]
   type    = ip
-  module  = udp6_coap
+  module  = tcp6_syn
   input   = other/ips
+  
+  [Optional]
+  th_dport = 80
   ```
 - [`config_net.ini`](./config_net.ini) 对应 `net` 模式
   ```ini
-  [Net]
-  L3Src   = 2408:8445:513:26be:6b61:58b5:408:1f62
-  L2Dst   = f2:6e:ff:45:d9:58
-  IF      = wlp59s0
+  [Interface]
+  l3_src  = 2408:8445:513:26be:6b61:58b5:408:1f62
+  l2_dst  = f2:6e:ff:45:d9:58
+  name    = wlp59s0
 
   [Runtime]
   shard   = 2
   rate    = 200000
   repeat  = 1
-  seed    = 521
-  limit   = 64
 
   [Scan]
   type    = net
   module  = icmp6_echo
   input   = IANA.txt
+
+  [Optional]
+  seed    = 521
+  limit   = 64
   iid     = rand
   ```
 
-### `[Net]`
+### `[Interface]`
 
 这些字段在 `ip` 和 `net` 两种模式下都要用到。
 
 | 键 | 含义 |
 |---|---|
-| `IF` | 网卡名称 |
-| `L2Dst` | 目的 MAC 地址 |
-| `L3Src` | 源 IPv6 地址 |
+| `name` | 网卡名称 |
+| `l2_dst` | 目的 MAC 地址 |
+| `l3_src` | 源 IPv6 地址 |
 
 ### `[Runtime]`
 
@@ -115,12 +146,7 @@ YMap 只接收一个 INI 配置文件路径作为参数。
 
 #### `net` 模式
 
-在 `ip` 模式字段基础上，再使用这些字段：
-
-| 键 | 含义 | 默认值 |
-|---|---|---|
-| `seed` | 前缀遍历随机种子 | `42` |
-| `limit` | 前缀扩展深度 | `48` |
+使用与 `ip` 模式相同的字段。
 
 ### `[Scan]`
 
@@ -145,13 +171,23 @@ YMap 只接收一个 INI 配置文件路径作为参数。
 | `module` | 探测模块名称 |
 | `input` | 输入文件路径 |
 | `output` | 输出文件路径，可选 |
-| `iid` | IID 模式：`rand`、十进制或十六进制 |
+
+### `[Optional]`
+
+`net` 模式和 `tcp6_syn` 使用这些字段。
+
+| 键 | 含义 | 默认值 |
+|---|---|---|
+| `seed` | 前缀遍历随机种子 | `std::random_device{}` |
+| `limit` | 前缀扩展深度 | 必填 |
+| `iid` | `net` 模式的 IID 模式 | 必填 |
+| `th_dport` | `tcp6_syn` 的 TCP 目的端口 | `80` |
 
 ## 扫描模式
 
 ### `net`
 
-每行读取一个 IPv6 前缀，并根据 `Runtime.limit` 扩展到指定深度。
+每行读取一个 IPv6 前缀，并根据 `Optional.limit` 扩展到指定深度。
 
 示例输入：
 
@@ -195,6 +231,17 @@ YMap 只接收一个 INI 配置文件路径作为参数。
 - 响应方 IPv6 地址
 - 源端口
 - CoAP 响应 class/detail
+
+### `tcp6_syn`
+
+向配置的 TCP 目的端口发送 SYN 探测包。
+
+输出字段：
+
+- 响应方 IPv6 地址
+- 源端口
+- TCP 标志位
+- 状态（`open`、`close` 或 `other`）
 
 ## 架构设计
 
@@ -246,12 +293,13 @@ struct probe_module_t {
 
 - `icmp6_echo`：ICMPv6 Echo Request/Reply 探测
 - `udp6_coap`：UDP/CoAP 探测
+- `tcp6_syn`：TCP SYN 探测
 
 ### 地址生成
 
 #### `net` 模式
 
-YMap 会确定性地遍历 IPv6 前缀空间，并把每个输入前缀扩展到配置的 `Runtime.limit`。
+YMap 会确定性地遍历 IPv6 前缀空间，并把每个输入前缀扩展到配置的 `Optional.limit`。
 
 对于每个输入前缀，YMap 会：
 1. 将前缀网络地址转换为起始值。

@@ -5,6 +5,7 @@
 #include <format>
 #include <fstream>
 #include <net/if.h>
+#include <random>
 #include <regex>
 #include <stdexcept>
 #include <string>
@@ -33,24 +34,21 @@ int main(int argc, char *argv[]) {
 
   // std::cout << std::format("{}\n", pt.get<std::string>("Net.IF"));
 
-  conf.if_name = pt.get<std::string>("Net.IF");
+  conf.if_name = pt.get<std::string>("Interface.name");
   conf.if_index = if_nametoindex(conf.if_name.c_str());
   if (conf.if_index == 0)
     throw std::runtime_error("Invalid Interface");
 
-  if (!ether_aton_r(pt.get<std::string>("Net.L2Dst").c_str(), &conf.l2_dst))
+  if (!ether_aton_r(pt.get<std::string>("Interface.l2_dst").c_str(),
+                    &conf.l2_dst))
     throw std::runtime_error("Invalid L2Dst");
 
-  if (inet_pton(AF_INET6, pt.get<std::string>("Net.L3Src").c_str(),
+  if (inet_pton(AF_INET6, pt.get<std::string>("Interface.l3_src").c_str(),
                 &conf.l3_src) != 1)
     throw std::runtime_error("Invalid L3Src");
 
   // Runtime
   conf.rate = pt.get<size_t>("Runtime.rate", 10000); // default 10kpps
-  conf.seed = pt.get<size_t>("Runtime.seed", 42);
-  conf.limit = pt.get<size_t>("Runtime.limit", 48); // default /48
-  if (conf.limit > 64)
-    throw std::runtime_error("Too Large Limit");
   conf.repeat = pt.get<size_t>("Runtime.repeat", 1); // default once
   conf.shard =
       pt.get<size_t>("Runtime.shard", 1); // default number of send thread
@@ -71,7 +69,6 @@ int main(int argc, char *argv[]) {
     if (it == registry.end())
       throw std::runtime_error("Scan Type Not Found");
     conf.probe_module = it->second;
-    conf.probe_module->module_init();
   }
   {
     auto path = pt.get<std::string>("Scan.input");
@@ -86,15 +83,28 @@ int main(int argc, char *argv[]) {
       throw std::runtime_error("Output Aclready Exists");
     conf.output = path;
   }
+
+  // Optional
   if (conf.type == "net") {
-    std::string iid = pt.get<std::string>("Scan.iid");
+    // net mode MUST need limit, seed and iid
+    conf.seed = pt.get<size_t>("Optional.seed", std::random_device{}());
+    conf.limit = pt.get<size_t>("Optional.limit"); // default /48
+    if (conf.limit > 64)
+      throw std::runtime_error("Too Large Limit");
+
+    std::string iid = pt.get<std::string>("Optional.iid");
     std::regex re(R"(^(\d+|0[xX][0-9a-fA-F]+)$)");
     if (!std::regex_match(iid, re) && iid != "rand")
       throw std::runtime_error("IID Mode Not Parsed");
     conf.iid = iid;
-  } else {
-    conf.iid.clear();
   }
+  if (conf.probe_module->name == "tcp6_syn") {
+    conf.th_dport = pt.get<uint16_t>("Optional.th_dport", 80);
+    if (conf.th_dport == 0)
+      throw std::runtime_error("Invalid dst_port");
+  }
+
+  conf.probe_module->module_init();
 
   receiver_t receiver{};
   sender_t sender{};

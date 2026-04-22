@@ -12,7 +12,33 @@ This project implements the paper:
 
 > **Pruning as Scanning: Towards Internet-Wide IPv6 Network Periphery Discovery**
 > IEEE INFOCOM 2025
-> [[Paper]](https://ieeexplore.ieee.org/document/11044733)
+> [Paper](https://ieeexplore.ieee.org/document/11044733)
+
+The _Pruning-as-Scanning_ approach is a scanning strategy designed to discover IPv6 network periphery addresses at Internet scale. It focuses on the _last-hop_ devices at IPv6 network periphery, such as gateways and IoT devices.
+
+The core idea is straightforward: send randomly generated probes within a given prefix and wait for responses from IPv6 Network periphery. Although the IPv6 address space is extremely large, **packet forwarding still follows the longest-prefix matching rule**, and **Pruning-as-Scanning** exploits exactly that property.
+
+When the probe budget is large enough and the sampling is sufficiently uniform, this approach can uncover IPv6 periphery devices across a very large address space with relatively few misses, _without requiring any seeds_. See the paper for the full theory and derivation.
+
+To reproduce the experiments described in the paper, run the helper script located in the repository root:
+
+```bash
+bash .pruning-as-scanning/pruning-as-scanning.sh
+```
+
+Before running it, set `IF_NAME` to the network interface used for probing.
+
+The script produces four result files: `scan32.txt`, `scan48.txt`, `scan56.txt`, and `scan64.txt`.
+
+If you extract the second column from these files and remove duplicates, you obtain the discovered set of IPv6 network periphery addresses.
+
+Deduplicating large result sets with standard tools can be slow, so the author provides a specialized utility based on a blocked Bloom filter: [buniq](https://github.com/latteyt/buniq)
+
+After installing it, you can deduplicate efficiently with:
+
+```bash
+mawk -F, '$3<128{print $2}' scan* | buniq
+```
 
 ## Features
 
@@ -53,12 +79,12 @@ Binary: `build/ymap`
 YMap takes one INI file path as its only argument.
 
 Example configs:
-- [`config_ips.ini`](./config_ips.ini) for `ip` mode
+- [`config_ips.ini`](./config_ips.ini) for `ip` mode with `tcp6_syn`
   ```ini
-  [Net]
-  L3Src   = 2408:8445:513:26be:6b61:58b5:408:1f62
-  L2Dst   = f2:6e:ff:45:d9:58
-  IF      = wlp59s0
+  [Interface]
+  l3_src  = 2408:8445:513:26be:6b61:58b5:408:1f62
+  l2_dst  = f2:6e:ff:45:d9:58
+  name    = wlp59s0
 
   [Runtime]
   shard   = 2
@@ -67,39 +93,44 @@ Example configs:
 
   [Scan]
   type    = ip
-  module  = udp6_coap
+  module  = tcp6_syn
   input   = other/ips
+
+  [Optional]
+  th_dport = 80
   ```
 - [`config_net.ini`](./config_net.ini) for `net` mode
   ```ini
-  [Net]
-  L3Src   = 2408:8445:513:26be:6b61:58b5:408:1f62
-  L2Dst   = f2:6e:ff:45:d9:58
-  IF      = wlp59s0
+  [Interface]
+  l3_src  = 2408:8445:513:26be:6b61:58b5:408:1f62
+  l2_dst  = f2:6e:ff:45:d9:58
+  name    = wlp59s0
 
   [Runtime]
   shard   = 2
   rate    = 200000
   repeat  = 1
-  seed    = 521
-  limit   = 64
 
   [Scan]
   type    = net
   module  = icmp6_echo
   input   = IANA.txt
+
+  [Optional]
+  seed    = 521
+  limit   = 64
   iid     = rand
   ```
 
-### `[Net]`
+### `[Interface]`
 
 These fields are used in both `ip` and `net` modes.
 
 | Key | Meaning |
 |---|---|
-| `IF` | Network interface name |
-| `L2Dst` | Destination MAC address |
-| `L3Src` | Source IPv6 address |
+| `name` | Network interface name |
+| `l2_dst` | Destination MAC address |
+| `l3_src` | Source IPv6 address |
 
 ### `[Runtime]`
 
@@ -115,12 +146,7 @@ Use these fields:
 
 #### `net` mode
 
-Use all `ip` fields plus these fields:
-
-| Key | Meaning | Default |
-|---|---|---|
-| `seed` | Random seed for prefix traversal | `42` |
-| `limit` | Prefix expansion depth | `48` |
+Use the same fields as `ip` mode.
 
 ### `[Scan]`
 
@@ -145,13 +171,23 @@ Use these fields:
 | `module` | Probe module name |
 | `input` | Input file path |
 | `output` | Output file path, optional |
-| `iid` | IID mode: `rand`, decimal, or hex |
+
+### `[Optional]`
+
+Use these fields for `net` mode and `tcp6_syn`.
+
+| Key | Meaning | Default |
+|---|---|---|
+| `seed` | Random seed for prefix traversal | `std::random_device{}` |
+| `limit` | Prefix expansion depth | required |
+| `iid` | IID mode for `net` mode | required |
+| `th_dport` | TCP destination port for `tcp6_syn` | `80` |
 
 ## Scan Modes
 
 ### `net`
 
-Reads one IPv6 prefix per line and expands each prefix to the configured `Runtime.limit`.
+Reads one IPv6 prefix per line and expands each prefix to the configured `Optional.limit`.
 
 Example input:
 
@@ -195,6 +231,17 @@ Output fields:
 - responder IPv6 address
 - source port
 - CoAP response class/detail
+
+### `tcp6_syn`
+
+Sends TCP SYN probes to the configured destination port.
+
+Output fields:
+
+- responder IPv6 address
+- source port
+- TCP flags
+- state (`open`, `close`, or `other`)
 
 
 ## Architecture
@@ -247,12 +294,13 @@ Register a module with `REGISTER_PROBE_MODULE(name)`.
 
 - `icmp6_echo`: ICMPv6 Echo Request/Reply probing
 - `udp6_coap`: UDP/CoAP probing
+- `tcp6_syn`: TCP SYN probing
 
 ### Address Generation
 
 #### `net` mode
 
-YMap traverses IPv6 prefix space in a deterministic way and expands each input prefix to the configured `Runtime.limit`.
+YMap traverses IPv6 prefix space in a deterministic way and expands each input prefix to the configured `Optional.limit`.
 
 For each input prefix, YMap:
 1. Converts the prefix network address to a starting value.

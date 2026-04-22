@@ -6,21 +6,14 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <format>
-#include <netinet/icmp6.h>
+#include <linux/if_ether.h>
 #include <netinet/ip6.h>
-#include <netinet/udp.h>
-#include <string>
-
-#define CoAP_PORT 5683
+#include <netinet/tcp.h>
 
 static FILE *file = NULL;
-// Fixed CoAP request payload copied into every probe packet.
-// It encodes a GET request for the standard `/.well-known/core` resource.
-unsigned char CoAP_TEMP[] = {0x40, 0x1,  0x31, 0x2d, 0xbb, 0x2e, 0x77,
-                             0x65, 0x6c, 0x6c, 0x2d, 0x6b, 0x6e, 0x6f,
-                             0x77, 0x6e, 0x4,  0x63, 0x6f, 0x72, 0x65};
 
 static size_t cal_sign(struct in6_addr *dst, struct in6_addr *src) {
   size_t seed = 0;
@@ -55,63 +48,76 @@ static void module_clear() {
   }
 }
 
-static void handle_packet(const unsigned char *rx_buf) {
-
-  auto *ip6h = (struct ip6_hdr *)(rx_buf + sizeof(struct ethhdr));
-  auto *udph = (struct udphdr *)(ip6h + 1);
-  unsigned char *coaph = reinterpret_cast<unsigned char *>(udph + 1);
-
-  uint8_t code = *(coaph + 1);
-  fprintf(file, "%s,", to_string(&ip6h->ip6_src).c_str());
-  fprintf(file, "%d,", ntohs(udph->uh_sport));
-  fprintf(file, "%d.%02d,", code >> 5,
-          code & 0x1f); //  class 3 bits detail 5 bits
-  fprintf(file, "\n");
-}
-
 static bool validate_packet(const unsigned char *rx_buf, size_t caplen) {
-  if (caplen < sizeof(struct ethhdr) + sizeof(struct ip6_hdr) +
-                   sizeof(struct udphdr) + 2) // for CoAP Code
+  if (caplen <
+      sizeof(struct ethhdr) + sizeof(struct ip6_hdr) + sizeof(struct tcphdr))
     return false;
 
   auto *ip6h = (struct ip6_hdr *)(rx_buf + sizeof(struct ethhdr));
-  if (ip6h->ip6_nxt != IPPROTO_UDP)
+  if (ip6h->ip6_nxt != IPPROTO_TCP)
     return false;
-  // fprintf(file, "%s,", to_string(&ip6h->ip6_src).c_str());
-  auto *udph = (struct udphdr *)(ip6h + 1);
-  if (udph->uh_sport != htons(CoAP_PORT))
+
+  auto *tcph = (struct tcphdr *)(ip6h + 1);
+  if (ntohs(tcph->source) != conf.th_dport)
     return false;
-  if (udph->uh_dport !=
+
+  uint8_t flags = *(reinterpret_cast<const uint8_t *>(tcph) + 13);
+  if (!(flags & (TH_SYN | TH_RST)))
+    return false;
+  if (!(flags & TH_ACK))
+    return false;
+
+  if (ntohs(tcph->th_dport) !=
       static_cast<uint16_t>(cal_sign(&ip6h->ip6_src, &ip6h->ip6_dst)))
     return false;
+
   return true;
 }
 
+static void handle_packet(const unsigned char *rx_buf) {
+  auto *ip6h = (struct ip6_hdr *)(rx_buf + sizeof(struct ethhdr));
+  auto *tcph = (struct tcphdr *)(ip6h + 1);
+  uint8_t flags = *(reinterpret_cast<const uint8_t *>(tcph) + 13);
+
+  if (flags & TH_SYN) {
+    fprintf(file, "%s,%u,%u,open\n", to_string(&ip6h->ip6_src).c_str(),
+            ntohs(tcph->th_sport), flags);
+  } else if (flags & TH_RST) {
+    fprintf(file, "%s,%u,%u,close\n", to_string(&ip6h->ip6_src).c_str(),
+            ntohs(tcph->th_sport), flags);
+  } else {
+    fprintf(file, "%s,%u,%u,other\n", to_string(&ip6h->ip6_src).c_str(),
+            ntohs(tcph->th_sport), flags);
+  }
+}
+
 static size_t make_packet(unsigned char *tx_buf, struct in6_addr *l3_dst) {
-  auto *ip6h = reinterpret_cast<struct ip6_hdr *>(tx_buf);
-  auto *udph = reinterpret_cast<struct udphdr *>(ip6h + 1);
-  unsigned char *coaph = reinterpret_cast<unsigned char *>(udph + 1);
+  auto *ip6h = (struct ip6_hdr *)tx_buf;
+  auto *tcph = (struct tcphdr *)(ip6h + 1);
 
-  std::memcpy(coaph, CoAP_TEMP, sizeof(CoAP_TEMP));
-
-  udph->uh_sport = 0;
-  udph->uh_dport = htons(CoAP_PORT);
-  udph->uh_ulen =
-      htons(static_cast<uint16_t>(sizeof(struct udphdr) + sizeof(CoAP_TEMP)));
-  udph->uh_sum = 0;
+  tcph->th_sport = 0;
+  tcph->th_dport = htons(conf.th_dport);
+  tcph->th_seq = std::rand();
+  tcph->th_ack = 0;
+  tcph->th_x2 = 0;
+  tcph->th_off = 5; // data offset 5*4=20 -> no options
+  tcph->th_flags = 0;
+  tcph->th_flags |= TH_SYN;
+  tcph->th_win = htons(65535); // largest possible window
+  tcph->th_sum = 0;
+  tcph->th_urp = 0;
 
   ip6h->ip6_flow = std::rand() & 0xfffff;
   ip6h->ip6_vfc = 0x60; // MUST after ip6_flow
-  ip6h->ip6_plen =
-      htons(static_cast<uint16_t>(sizeof(struct udphdr) + sizeof(CoAP_TEMP)));
-  ip6h->ip6_nxt = IPPROTO_UDP;
+  ip6h->ip6_plen = htons(sizeof(struct tcphdr));
+  ip6h->ip6_nxt = IPPROTO_TCP;
   ip6h->ip6_hlim = 64;
   std::memcpy(&ip6h->ip6_src, &conf.l3_src, sizeof(struct in6_addr));
   std::memcpy(&ip6h->ip6_dst, l3_dst, sizeof(struct in6_addr));
 
   /* calculate the src port */
-  udph->uh_sport =
-      static_cast<uint16_t>(cal_sign(&ip6h->ip6_dst, &ip6h->ip6_src));
+  tcph->th_sport = htons(static_cast<uint16_t>(cal_sign(&ip6h->ip6_dst,
+                                                         &ip6h->ip6_src)));
 
   /* calculate the checksum */
   uint32_t sum = 0;
@@ -133,19 +139,19 @@ static size_t make_packet(unsigned char *tx_buf, struct in6_addr *l3_dst) {
   sum = (sum >> 16) + (sum & 0xFFFF);
   sum = (sum >> 16) + (sum & 0xFFFF);
 
-  udph->uh_sum = uint16_t(~sum);
+  tcph->th_sum = uint16_t(~sum);
 
-  return sizeof(struct ip6_hdr) + sizeof(struct udphdr) + sizeof(CoAP_TEMP);
+  return sizeof(struct ip6_hdr) + sizeof(struct tcphdr);
 }
 
-static probe_module_t udp6_coap = {
-    .name = "udp6_coap",
+static probe_module_t tcp6_syn = {
+    .name = "tcp6_syn",
     .module_init = module_init,
     .module_clear = module_clear,
     .make_packet = make_packet,
     .handle_packet = handle_packet,
     .validate_packet = validate_packet,
-    .pcap_filter = "ip6 && udp && src port 5683",
+    .pcap_filter = "ip6 && tcp",
 };
 
-REGISTER_PROBE_MODULE(udp6_coap)
+REGISTER_PROBE_MODULE(tcp6_syn)
