@@ -42,7 +42,7 @@ sudo apt-get install build-essential cmake libpcap-dev libboost-dev
 编译：
 
 ```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake -S . -B build
 cmake --build build
 ```
 
