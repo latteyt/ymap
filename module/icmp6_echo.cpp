@@ -10,6 +10,7 @@
 #include <netinet/icmp6.h>
 #include <netinet/in.h>
 #include <netinet/ip6.h>
+#include <sys/types.h>
 
 #define MAX_HOP_LIMIT 255
 
@@ -34,6 +35,17 @@ static std::string to_string(const struct in6_addr *ip) {
                      ntohs(ip->s6_addr16[6]), ntohs(ip->s6_addr16[7]));
 }
 
+static size_t common_prefix_length(const struct in6_addr *t,
+                                   const struct in6_addr *r) {
+  uint64_t t_p, r_p; // target prefix, response prefix
+  memcpy(&t_p, t->s6_addr, 8);
+  memcpy(&r_p, r->s6_addr, 8);
+  t_p = __builtin_bswap64(t_p);
+  r_p = __builtin_bswap64(r_p);
+  uint64_t x = t_p ^ r_p;
+  return x == 0 ? 64 : __builtin_clzll(x);
+}
+
 static bool module_init() {
   if (conf.output.empty()) {
     file = stdout;
@@ -48,6 +60,7 @@ static void module_clear() {
     fflush(file);
     fclose(file);
   }
+  file = NULL;
 }
 
 static bool validate_packet(const unsigned char *rx_buf, size_t caplen) {
@@ -107,26 +120,32 @@ static void handle_packet(const unsigned char *rx_buf) {
 ICMPv6_ERROR: {
   auto *send_ip6h = (struct ip6_hdr *)(recv_icmp6h + 1);
   auto *send_icmp6h = (struct icmp6_hdr *)(send_ip6h + 1);
-  fprintf(file, "%s,", to_string(&send_ip6h->ip6_dst).c_str());
+
   fprintf(file, "%s,", to_string(&recv_ip6h->ip6_src).c_str());
+
+  // the common_prefix_length is IMPORTANT indicator for IPv6 routing activity
+  fprintf(file, "%zu,",
+          common_prefix_length(&send_ip6h->ip6_dst, &recv_ip6h->ip6_src));
   fprintf(file, "%d,", recv_icmp6h->icmp6_type);
   fprintf(file, "%d,", recv_icmp6h->icmp6_code);
   fprintf(file, "%d,", MAX_HOP_LIMIT - send_ip6h->ip6_hlim);
-  fprintf(file, "%d,",
+  fprintf(file, "%d",
           static_cast<uint16_t>(current_steady_ms<uint16_t>() -
                                 send_icmp6h->icmp6_id));
   fprintf(file, "\n");
   return;
 }
 ICMPv6_REPLY: {
+  fprintf(file, "%s,", to_string(&recv_ip6h->ip6_src).c_str());
 
-  fprintf(file, "%s,", to_string(&recv_ip6h->ip6_src).c_str());
-  fprintf(file, "%s,", to_string(&recv_ip6h->ip6_src).c_str());
+  fprintf(file, "%zu,",
+          common_prefix_length(&recv_ip6h->ip6_src, &recv_ip6h->ip6_src));
+
   fprintf(file, "%d,", recv_icmp6h->icmp6_type);
   fprintf(file, "%d,", recv_icmp6h->icmp6_code);
   fprintf(file, "%d,",
           PREDICT_MAX_HOP_LIMIT(recv_ip6h->ip6_hlim) - recv_ip6h->ip6_hlim);
-  fprintf(file, "%d,",
+  fprintf(file, "%d",
           static_cast<uint16_t>(current_steady_ms<uint16_t>() -
                                 recv_icmp6h->icmp6_id));
   fprintf(file, "\n");

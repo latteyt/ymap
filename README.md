@@ -337,17 +337,17 @@ bash .pruning-as-scanning/pruning-as-scanning.sh
 
 Before running it, set `IF_NAME` to the network interface used for probing.
 
-The script produces four result files: `scan32.txt`, `scan48.txt`, `scan56.txt`, and `scan64.txt`.
-
-If you extract the second column from these files and remove duplicates, you obtain the discovered set of IPv6 network periphery addresses.
+The script produces four result files: `scan32.txt`, `scan48.txt`, `scan56.txt`, and `scan64.txt`. Each file contains IPv6 addresses, but they are not deduplicated yet.
 
 Deduplicating large result sets with standard tools can be slow, so the author provides a specialized utility based on a blocked Bloom filter: [buniq](https://github.com/latteyt/buniq)
 
-After installing it, you can deduplicate efficiently with:
+Combine these files and run:
 
 ```bash
-mawk -F, '$3<128{print $2}' scan* | buniq
+cat scan* | buniq
 ```
+
+to obtain the final set of discovered IPv6 network periphery addresses.
 
 ## License
 

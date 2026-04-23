@@ -12,12 +12,7 @@ if [[ -z "$AWK_BIN" ]]; then
   exit 1
 fi
 
-# Keep only prefixes whose responses share the same prefix fingerprint.
-# This is the pruning step that decides which prefixes should be explored deeper.
-# `filter` checks whether the discovered periphery and the target address
-# belong to the same IPv6 prefix. Since IPv6 forwarding is prefix-based,
-# this helps decide whether the prefix should be explored further.
-filter() {
+extract() {
   case $1 in
     32) str_len=9  ; suffix="::/32" ;;
     48) str_len=14 ; suffix="::/48" ;;
@@ -27,12 +22,20 @@ filter() {
 
   "$AWK_BIN" -F, -v len="$str_len" -v suf="$suffix" '
   {
-    prefix = substr($1, 1, len)
-    if ($3 < 128 && prefix == substr($2, 1, len) && !seen[prefix]++) {
-      printf("%s%s\n", prefix, suf)
-    }
+    if (!seen[(p=substr($1,1,len))]++)
+      print p suf
   }'
 }
+
+# Keep only prefixes whose responses share the same prefix fingerprint.
+# This is the pruning step that decides which prefixes should be explored deeper.
+# `filter` checks whether the discovered periphery and the target address
+# belong to the same IPv6 prefix. Since IPv6 forwarding is prefix-based,
+# this helps decide whether the prefix should be explored further.
+filter() {
+  "$AWK_BIN" -F, -v len="$1" '($3 < 128 && $2 >= len){print $1}'
+}
+
 
 # Generate a scan config for the current prefix length.
 # Each round scans one prefix size and feeds its output into the next round.
@@ -101,10 +104,10 @@ check_file_exists "IANA.txt"
 for i in "${!limits[@]}"; do
   limit="${limits[$i]}"
   generate_ini_file "$limit"
-  sudo ./build/ymap ".pruning-as-scanning/scan${limit}.ini" > ".pruning-as-scanning/scan${limit}.txt"
+  sudo ./build/ymap ".pruning-as-scanning/scan${limit}.ini" | filter $limit > ".pruning-as-scanning/scan${limit}.txt"
   check_file_exists ".pruning-as-scanning/scan${limit}.txt"
   if [[ $limit != 64 ]]; then
-    cat ".pruning-as-scanning/scan${limit}.txt" | filter $limit > ".pruning-as-scanning/prefix${limit}.txt"
+    cat ".pruning-as-scanning/scan${limit}.txt" | extract $limit > ".pruning-as-scanning/prefix${limit}.txt"
     check_file_exists ".pruning-as-scanning/prefix${limit}.txt"
   fi
 done

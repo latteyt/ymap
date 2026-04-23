@@ -332,17 +332,17 @@ bash .pruning-as-scanning/pruning-as-scanning.sh
 
 运行前请先设置 `IF_NAME`，指定用于探测的网络接口。
 
-脚本会生成四个结果文件：`scan32.txt`、`scan48.txt`、`scan56.txt` 和 `scan64.txt`。
-
-如果提取这些文件的第二列并去重，就可以得到发现的 IPv6 网络边缘地址集合。
+脚本会生成四个结果文件：`scan32.txt`、`scan48.txt`、`scan56.txt` 和 `scan64.txt`。这些文件里虽然都是 IPv6 地址，但还没有去重。
 
 由于使用常规工具对大规模结果集去重可能较慢，作者提供了一个基于 Blocked Bloom Filter 的专用工具：[buniq](https://github.com/latteyt/buniq)
 
-安装后，可以使用下面的命令高效去重：
+把这些文件合并后执行：
 
 ```bash
-mawk -F, '$3<128{print $2}' scan* | buniq
+cat scan* | buniq
 ```
+
+就可以得到最终发现的 IPv6 网络边缘地址集合。
 
 ## 许可证
 
