@@ -48,14 +48,6 @@ extract() {
   }'
 }
 
-# Keep only prefixes whose responses share the same prefix fingerprint.
-# This is the pruning step that decides which prefixes should be explored deeper.
-# `filter` checks whether the discovered periphery and the target address
-# belong to the same IPv6 prefix. Since IPv6 forwarding is prefix-based,
-# this helps decide whether the prefix should be explored further.
-filter() {
-  "$AWK_BIN" -F, -v len="$1" '($3 < 128 && $2 >= len){print $1}'
-}
 
 
 # Generate a scan config for the current prefix length.
@@ -106,7 +98,12 @@ check_file_exists "IANA.txt"
 for i in "${!limits[@]}"; do
   limit="${limits[$i]}"
   generate_ini_file "$limit"
-  sudo ./build/ymap ".pruning-as-scanning/scan${limit}.ini" | filter $limit > ".pruning-as-scanning/scan${limit}.txt"
+  # Keep only prefixes whose responses share the same prefix fingerprint.
+  # This is the pruning step that decides which prefixes should be explored deeper.
+  # `filter` checks whether the discovered periphery and the target address
+  # belong to the same IPv6 prefix. Since IPv6 forwarding is prefix-based,
+  # this helps decide whether the prefix should be explored further.
+  sudo ./build/ymap ".pruning-as-scanning/scan${limit}.ini" | "$AWK_BIN" -F, -v len="${limit}" '$3<128&&$2>=len{print $1}' > ".pruning-as-scanning/scan${limit}.txt"
   check_file_exists ".pruning-as-scanning/scan${limit}.txt"
   if [[ $limit != 64 ]]; then
     cat ".pruning-as-scanning/scan${limit}.txt" | extract $limit > ".pruning-as-scanning/prefix${limit}.txt"
