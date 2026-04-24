@@ -39,6 +39,12 @@ Debian/Ubuntu 安装依赖：
 sudo apt-get install build-essential cmake libpcap-dev libboost-dev
 ```
 
+Fedora 安装依赖：
+
+```bash
+sudo dnf install gcc-c++ cmake libpcap-devel boost-devel
+```
+
 编译：
 
 ```bash

@@ -40,6 +40,12 @@ Install on Debian/Ubuntu:
 sudo apt-get install build-essential cmake libpcap-dev libboost-dev
 ```
 
+Install on Fedora:
+
+```bash
+sudo dnf install gcc-c++ cmake libpcap-devel boost-devel
+```
+
 Build:
 
 ```bash
@@ -325,7 +331,7 @@ Contributions are welcome. Please ensure:
 
 The _Pruning-as-Scanning_ approach is a scanning strategy designed to discover IPv6 network periphery addresses at Internet scale. It focuses on the _last-hop_ devices at IPv6 network periphery, such as gateways and IoT devices.
 
-The core idea is straightforward: send randomly generated probes within a given prefix and wait for responses from IPv6 Network periphery. Although the IPv6 address space is extremely large, **packet forwarding still follows the longest-prefix matching rule**, and **Pruning-as-Scanning** exploits exactly that property.
+The core idea is straightforward: send randomly generated probes within a given prefix and wait for responses from IPv6 Network periphery. Although the IPv6 address space is extremely large, **packet forwarding still follows the longest-prefix matching rule**, and _Pruning-as-Scanning_ exploits exactly that property.
 
 When the probe budget is large enough and the sampling is sufficiently uniform, this approach can uncover IPv6 periphery devices across a very large address space with relatively few misses, _without requiring any seeds_. See the paper for the full theory and derivation.
 

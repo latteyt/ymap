@@ -1,4 +1,25 @@
 
+[[ -z "$IF_NAME" ]] && echo "Error: environment variable 'IF_NAME' is not set" >&2 && exit 1
+
+SCAN_RATE="${SCAN_RATE:-200000}"
+if [[ ! "$SCAN_RATE" =~ ^[0-9]+$ ]] || [[ "$SCAN_RATE" -le 0 ]]; then
+  echo "Error: environment variable 'SCAN_RATE' must be a positive integer" >&2
+  exit 1
+fi
+
+SHARD="${SHARD:-2}"
+if [[ ! "$SHARD" =~ ^[0-9]+$ ]] || [[ "$SHARD" -le 0 ]]; then
+  echo "Error: environment variable 'SHARD' must be a positive integer" >&2
+  exit 1
+fi
+
+if [[ -v SEED ]]; then
+  if [[ ! "$SEED" =~ ^[0-9]+$ ]]; then
+    echo "Error: environment variable 'SEED' must be an integer" >&2
+    exit 1
+  fi
+fi
+
 check_file_exists() {
   if [[ ! -f "$1" ]]; then
     echo "Error: $1 not found" >&2
@@ -65,31 +86,12 @@ module  = icmp6_echo
 input   = $input
 
 [Optional]
-seed    = $SEED
+$( [[ -v SEED ]] && echo "seed    = $SEED" )
 limit   = $1
 iid     = rand
 EOF
 }
 
-[[ -z "$IF_NAME" ]] && echo "Error: environment variable 'IF_NAME' is not set" >&2 && exit 1
-
-SCAN_RATE="${SCAN_RATE:-200000}"
-if [[ ! "$SCAN_RATE" =~ ^[0-9]+$ ]] || [[ "$SCAN_RATE" -le 0 ]]; then
-  echo "Error: environment variable 'SCAN_RATE' must be a positive integer" >&2
-  exit 1
-fi
-
-SHARD="${SHARD:-2}"
-if [[ ! "$SHARD" =~ ^[0-9]+$ ]] || [[ "$SHARD" -le 0 ]]; then
-  echo "Error: environment variable 'SHARD' must be a positive integer" >&2
-  exit 1
-fi
-
-SEED="${SEED:-521}"
-if [[ ! "$SEED" =~ ^[0-9]+$ ]]; then
-  echo "Error: environment variable 'SEED' must be an integer" >&2
-  exit 1
-fi
 
 L3_SRC=$(ip -6 addr show dev "$IF_NAME" | grep "inet6" | grep "global" |  "$AWK_BIN" '!seen[$2]++{print $2}' | cut -d'/' -f1)
 L2_DST=$(ip -6 neigh show dev "$IF_NAME" | grep "router" | "$AWK_BIN" '!seen[$3]++{print $3}')
