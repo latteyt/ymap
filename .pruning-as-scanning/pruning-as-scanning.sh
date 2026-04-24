@@ -1,4 +1,3 @@
-
 [[ -z "$IF_NAME" ]] && echo "Error: environment variable 'IF_NAME' is not set" >&2 && exit 1
 
 SCAN_RATE="${SCAN_RATE:-100000}"
@@ -38,8 +37,6 @@ extract() {
   awk -F, -v len="$str_len" -v suf="$suffix" '!seen[(p=substr($1,1,len))]++{print p suf}'
 }
 
-
-
 # Generate a scan config for the current prefix length.
 # Each round scans one prefix size and feeds its output into the next round.
 generate_ini_file() {
@@ -74,9 +71,8 @@ iid     = rand
 EOF
 }
 
-
-L3_SRC=$(ip -6 addr show dev "$IF_NAME" | grep "inet6" | grep "global" |  "$AWK_BIN" '!seen[$2]++{print $2}' | cut -d'/' -f1)
-L2_DST=$(ip -6 neigh show dev "$IF_NAME" | grep "router" | "$AWK_BIN" '!seen[$3]++{print $3}')
+L3_SRC=$(ip -6 addr show dev "$IF_NAME" | grep "inet6" | grep "global" | awk '!seen[$2]++{print $2}' | cut -d'/' -f1)
+L2_DST=$(ip -6 neigh show dev "$IF_NAME" | grep "router" | awk '!seen[$3]++{print $3}')
 
 limits=(32 48 56 64)
 
