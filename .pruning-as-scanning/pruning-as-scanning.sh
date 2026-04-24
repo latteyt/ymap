@@ -27,12 +27,6 @@ check_file_exists() {
   fi
 }
 
-AWK_BIN="$(command -v mawk || command -v awk)"
-if [[ -z "$AWK_BIN" ]]; then
-  echo "Error: neither mawk nor awk was found" >&2
-  exit 1
-fi
-
 extract() {
   case $1 in
     32) str_len=9  ; suffix="::/32" ;;
@@ -41,11 +35,7 @@ extract() {
     *) echo "Error: invalid limit '$1' in filter" >&2; exit 1 ;;
   esac
 
-  "$AWK_BIN" -F, -v len="$str_len" -v suf="$suffix" '
-  {
-    if (!seen[(p=substr($1,1,len))]++)
-      print p suf
-  }'
+  awk -F, -v len="$str_len" -v suf="$suffix" '!seen[(p=substr($1,1,len))]++{print p suf}'
 }
 
 
@@ -103,7 +93,7 @@ for i in "${!limits[@]}"; do
   # `filter` checks whether the discovered periphery and the target address
   # belong to the same IPv6 prefix. Since IPv6 forwarding is prefix-based,
   # this helps decide whether the prefix should be explored further.
-  sudo ./build/ymap ".pruning-as-scanning/scan${limit}.ini" | "$AWK_BIN" -F, -v len="${limit}" '$3<128&&$2>=len{print $1}' > ".pruning-as-scanning/scan${limit}.txt"
+  sudo ./build/ymap ".pruning-as-scanning/scan${limit}.ini" | awk -F, -v len="${limit}" '$3<128&&$2>=len{print $1}' > ".pruning-as-scanning/scan${limit}.txt"
   check_file_exists ".pruning-as-scanning/scan${limit}.txt"
   if [[ $limit != 64 ]]; then
     cat ".pruning-as-scanning/scan${limit}.txt" | extract $limit > ".pruning-as-scanning/prefix${limit}.txt"
