@@ -1,7 +1,7 @@
 
 [[ -z "$IF_NAME" ]] && echo "Error: environment variable 'IF_NAME' is not set" >&2 && exit 1
 
-SCAN_RATE="${SCAN_RATE:-200000}"
+SCAN_RATE="${SCAN_RATE:-100000}"
 if [[ ! "$SCAN_RATE" =~ ^[0-9]+$ ]] || [[ "$SCAN_RATE" -le 0 ]]; then
   echo "Error: environment variable 'SCAN_RATE' must be a positive integer" >&2
   exit 1

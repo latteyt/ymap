@@ -156,7 +156,8 @@ ICMPv6_REPLY: {
                ntohs(recv_ip6h->ip6_src.s6_addr16[4]),
                ntohs(recv_ip6h->ip6_src.s6_addr16[5]),
                ntohs(recv_ip6h->ip6_src.s6_addr16[6]),
-               ntohs(recv_ip6h->ip6_src.s6_addr16[7]), 64UL,
+               ntohs(recv_ip6h->ip6_src.s6_addr16[7]),
+               common_prefix_length(&recv_ip6h->ip6_src, &recv_ip6h->ip6_src),
                recv_icmp6h->icmp6_type, recv_icmp6h->icmp6_code,
                PREDICT_MAX_HOP_LIMIT(recv_ip6h->ip6_hlim) - recv_ip6h->ip6_hlim,
                static_cast<uint16_t>(current_steady_ms<uint16_t>() -
