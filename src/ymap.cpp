@@ -70,7 +70,6 @@ int main(int argc, char *argv[]) {
     if (it == registry.end())
       throw std::runtime_error("Scan Type Not Found");
     conf.probe_module = it->second;
-    conf.probe_module->module_init();
   }
   {
     auto path = pt.get<std::string>("Scan.input");
@@ -91,6 +90,10 @@ int main(int argc, char *argv[]) {
     if (!std::regex_match(iid, re) && iid != "rand")
       throw std::runtime_error("IID Mode Not Parsed");
     conf.iid = iid;
+  }
+  {
+    if (!conf.probe_module->module_init())
+      throw std::runtime_error("Probe Module Init Failed");
   }
 
   receiver_t receiver{};
