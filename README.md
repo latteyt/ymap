@@ -60,7 +60,7 @@ Binary: `build/ymap`
 YMap takes one INI file path as its only argument.
 
 Example configs:
-- [`config_ips.ini`](./config_ips.ini) for `ip` mode with `tcp6_syn`
+- [`config_ips.ini`](./config_ips.ini) for `ip` mode with `udp6_coap`
   ```ini
   [Interface]
   name    = eth0
@@ -69,7 +69,7 @@ Example configs:
 
   [Runtime]
   shard   = 2
-  rate    = 10
+  rate    = 20000
   repeat  = 1
 
   [Scan]
@@ -89,7 +89,7 @@ Example configs:
 
   [Runtime]
   shard   = 2
-  rate    = 10
+  rate    = 200000
   repeat  = 1
 
   [Scan]
@@ -347,7 +347,7 @@ bash .pruning-as-scanning/pruning-as-scanning.sh
 
 Before running it, set `IF_NAME` to the network interface used for probing.
 
-The script currently produces `prefix24.txt`, `prefix32.txt`, `prefix48.txt`, and a dated `outputYYYYMMDD.txt` log under `.pruning-as-scanning/`.
+The script currently produces `prefix24.txt`, `prefix32.txt`, `prefix40.txt`, `prefix48.txt`, and a dated `outputYYYYMMDD.txt` log under `.pruning-as-scanning/`.
 
 Deduplicating large result sets with standard tools can be slow, so the author provides a specialized utility based on a blocked Bloom filter: [buniq](https://github.com/latteyt/buniq)
 
