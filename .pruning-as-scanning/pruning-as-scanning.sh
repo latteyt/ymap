@@ -7,8 +7,8 @@ YMAP="../build/ymap"
 [[ ! -x "$YMAP" ]] && { echo "Error: $YMAP not found" >&2; exit 1; }
 
 [[ -z "$IF_NAME" ]] && echo "Error: environment variable 'IF_NAME' is not set" >&2 && exit 1
-L3_SRC=$(ip -6 addr show dev "$IF_NAME" | grep "inet6" | grep "global" | awk '!seen[$2]++{print $2}' | cut -d'/' -f1)
-L2_DST=$(ip -6 neigh show dev "$IF_NAME" | grep "router" | awk '!seen[$3]++{print $3}')
+L3_SRC=$(ip -6 addr show dev "$IF_NAME" | grep "inet6" | grep "global" | head -n1 | cut -d'/' -f1)
+L2_DST=$(ip -6 neigh show dev "$IF_NAME" | grep "router" | grep -E 'STALE|REACHABLE' | head -n1 | cut -d' ' -f5)
 [[ -z "$L3_SRC" ]] && echo "Error: no global IPv6 address on $IF_NAME" >&2 && exit 1
 [[ -z "$L2_DST" ]] && echo "Error: no router neighbor found on $IF_NAME" >&2 && exit 1
 
