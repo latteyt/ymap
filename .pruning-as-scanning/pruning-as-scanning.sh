@@ -14,7 +14,6 @@ L2_DST=$(ip -6 neigh show dev "$IF_NAME" | grep "router" | grep -E 'STALE|REACHA
 
 SCAN_RATE="${SCAN_RATE:-100000}"
 SHARD="${SHARD:-1}"
-SEED="${SEED:-123}"
 
 
 # Generate a scan config for the current prefix length.
