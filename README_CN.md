@@ -94,10 +94,10 @@ YMap 只接收一个 INI 配置文件路径作为参数。
   [Scan]
   type    = net
   module  = icmp6_echo
-  input   = IANA.txt
+  input   = IANA
+  output  = output.txt
 
   [Optional]
-  seed    = 521
   limit   = 64
   iid     = rand
   ```
@@ -128,6 +128,8 @@ YMap 只接收一个 INI 配置文件路径作为参数。
 
 使用与 `ip` 模式相同的字段。
 
+`Scan.input` 可以省略，或者显式写成 `IANA`；此时 YMap 会使用内置前缀集合。
+
 ### `[Scan]`
 
 #### `ip` 模式
@@ -149,7 +151,7 @@ YMap 只接收一个 INI 配置文件路径作为参数。
 |---|---|
 | `type` | 必须是 `net` |
 | `module` | 探测模块名称 |
-| `input` | 输入文件路径 |
+| `input` | 输入文件路径或 `IANA` |
 | `output` | 输出文件路径，可选 |
 
 ### `[Optional]`
@@ -158,7 +160,7 @@ YMap 只接收一个 INI 配置文件路径作为参数。
 
 | 键 | 含义 | 默认值 |
 |---|---|---|
-| `seed` | 前缀遍历随机种子 | `std::random_device{}` |
+| `seed` | 前缀遍历随机种子 | 省略，由程序内部随机生成 |
 | `limit` | 前缀扩展深度 | 必填 |
 | `iid` | `net` 模式的 IID 模式 | 必填 |
 | `th_dport` | `tcp6_syn` 的 TCP 目的端口 | `80` |
@@ -168,6 +170,7 @@ YMap 只接收一个 INI 配置文件路径作为参数。
 ### `net`
 
 每行读取一个 IPv6 前缀，并根据 `Optional.limit` 扩展到指定深度。
+如果 `Scan.input` 省略或设置为 `IANA`，YMap 会使用内置前缀集合。
 
 示例输入：
 
@@ -338,14 +341,14 @@ bash .pruning-as-scanning/pruning-as-scanning.sh
 
 运行前请先设置 `IF_NAME`，指定用于探测的网络接口。
 
-脚本会生成四个结果文件：`scan32.txt`、`scan48.txt`、`scan56.txt` 和 `scan64.txt`。这些文件里虽然都是 IPv6 地址，但还没有去重。
+脚本当前会生成 `prefix24.txt`、`prefix32.txt`、`prefix48.txt`，以及按日期命名的 `outputYYYYMMDD.txt` 日志文件，均位于 `.pruning-as-scanning/` 下。
 
 由于使用常规工具对大规模结果集去重可能较慢，作者提供了一个基于 Blocked Bloom Filter 的专用工具：[buniq](https://github.com/latteyt/buniq)
 
 把这些文件合并后执行：
 
 ```bash
-cat scan* | buniq
+cat outputYYYYMMDD.txt | cut -d, -f1 | buniq
 ```
 
 就可以得到最终发现的 IPv6 网络边缘地址集合。

@@ -16,24 +16,26 @@ It currently uses:
 
 - `Scan.type = net`
 - `Scan.module = icmp6_echo`
-- `Optional.seed`
+- `Scan.input = IANA` or a prefix file
 - `Optional.limit`
 - `Optional.iid = rand`
 
-## AWK selection
+## Processing
 
-The script prefers `mawk` when available.
-If `mawk` is not installed, it falls back to `awk`.
+The script uses a shell pipeline with `awk` to filter scan output and derive
+`prefix24.txt`, `prefix32.txt`, and `prefix48.txt`.
 
 ## Inputs
 
 - `IF_NAME` is required.
 - Optional environment variables:
-  - `SCAN_RATE` (default: `200000`)
-  - `SHARD` (default: `2`)
-  - `SEED` (default: `521`)
+  - `SCAN_RATE` (default: `100000`)
+  - `SHARD` (default: `1`)
+  - `SEED` (optional; YMap will use an internal random seed if omitted)
 
 ## Outputs
 
 The script writes generated configs and intermediate results under
-`.pruning-as-scanning/`.
+`.pruning-as-scanning/`, including a dated `outputYYYYMMDD.txt` log.
+
+The resulting files can be deduplicated with [buniq](https://github.com/latteyt/buniq).
