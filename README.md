@@ -63,9 +63,9 @@ Example configs:
 - [`config_ips.ini`](./config_ips.ini) for `ip` mode with `tcp6_syn`
   ```ini
   [Interface]
-  l3_src  = 2408:8445:513:26be:6b61:58b5:408:1f62
-  l2_dst  = f2:6e:ff:45:d9:58
-  name    = wlp59s0
+  name    = eth0
+  l2_dst  = 00:11:22:33:44:55
+  l3_src  = 2001:db8::1
 
   [Runtime]
   shard   = 2
@@ -83,22 +83,22 @@ Example configs:
 - [`config_net.ini`](./config_net.ini) for `net` mode
   ```ini
   [Interface]
-  l3_src  = 2408:8445:513:26be:6b61:58b5:408:1f62
-  l2_dst  = f2:6e:ff:45:d9:58
-  name    = wlp59s0
+  name    = eth0
+  l2_dst  = 00:11:22:33:44:55
+  l3_src  = 2001:db8::1
 
   [Runtime]
   shard   = 2
-  rate    = 200000
+  rate    = 10
   repeat  = 1
 
   [Scan]
   type    = net
   module  = icmp6_echo
-  input   = IANA.txt
+  input   = IANA
+  output  = output.txt
 
   [Optional]
-  seed    = 521
   limit   = 64
   iid     = rand
   ```
@@ -129,6 +129,7 @@ Use these fields:
 
 Use the same fields as `ip` mode.
 
+
 ### `[Scan]`
 
 #### `ip` mode
@@ -150,8 +151,11 @@ Use these fields:
 |---|---|
 | `type` | Must be `net` |
 | `module` | Probe module name |
-| `input` | Input file path |
+| `input` | Input file path or `IANA` |
 | `output` | Output file path, optional |
+
+
+`Scan.input` may be omitted or set to `IANA`; in that case YMap uses its built-in prefix set.
 
 ### `[Optional]`
 
@@ -159,7 +163,7 @@ Use these fields for `net` mode and `tcp6_syn`.
 
 | Key | Meaning | Default |
 |---|---|---|
-| `seed` | Random seed for prefix traversal | `std::random_device{}` |
+| `seed` | Random seed for prefix traversal | omitted, generated internally |
 | `limit` | Prefix expansion depth | required |
 | `iid` | IID mode for `net` mode | required |
 | `th_dport` | TCP destination port for `tcp6_syn` | `80` |
@@ -169,6 +173,7 @@ Use these fields for `net` mode and `tcp6_syn`.
 ### `net`
 
 Reads one IPv6 prefix per line and expands each prefix to the configured `Optional.limit`.
+If `Scan.input` is omitted or set to `IANA`, YMap uses its built-in prefix set.
 
 Example input:
 
@@ -328,7 +333,6 @@ Contributions are welcome. Please ensure:
 
 ## The Pruning-as-Scanning Strategy
 
-
 The _Pruning-as-Scanning_ approach is a scanning strategy designed to discover IPv6 network periphery addresses at Internet scale. It focuses on the _last-hop_ devices at IPv6 network periphery, such as gateways and IoT devices.
 
 The core idea is straightforward: send randomly generated probes within a given prefix and wait for responses from IPv6 Network periphery. Although the IPv6 address space is extremely large, **packet forwarding still follows the longest-prefix matching rule**, and _Pruning-as-Scanning_ exploits exactly that property.
@@ -343,14 +347,14 @@ bash .pruning-as-scanning/pruning-as-scanning.sh
 
 Before running it, set `IF_NAME` to the network interface used for probing.
 
-The script produces four result files: `scan32.txt`, `scan48.txt`, `scan56.txt`, and `scan64.txt`. Each file contains IPv6 addresses, but they are not deduplicated yet.
+The script currently produces `prefix24.txt`, `prefix32.txt`, `prefix48.txt`, and a dated `outputYYYYMMDD.txt` log under `.pruning-as-scanning/`.
 
 Deduplicating large result sets with standard tools can be slow, so the author provides a specialized utility based on a blocked Bloom filter: [buniq](https://github.com/latteyt/buniq)
 
 Combine these files and run:
 
 ```bash
-cat scan* | buniq
+cat outputYYYYMMDD.txt | cut -d, -f1 | buniq
 ```
 
 to obtain the final set of discovered IPv6 network periphery addresses.
