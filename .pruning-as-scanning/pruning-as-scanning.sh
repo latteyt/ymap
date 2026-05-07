@@ -59,11 +59,15 @@ today=$(date +%Y%m%d)
 
 rm -f scan.ini "output$today.txt"
 
-REPEAT=1024 LIMIT=32 generate_ini_file
+
+
+REPEAT=4096 LIMIT=24 generate_ini_file
+[[ ! -f "scan.ini" ]] && { echo "Error: scan.ini not found" >&2; exit 1; }
+sudo "$YMAP" "scan.ini" | awk -F, '$3<128{print $1","$2}' | tee -a "output$today.txt" | awk -F, '$2>=24 && !seen[(p=substr($1,1,7))]++{print p"00::/24"}' > prefix24.txt
+
+REPEAT=1024 LIMIT=32 INPUT="prefix24.txt" generate_ini_file
 [[ ! -f "scan.ini" ]] && { echo "Error: scan.ini not found" >&2; exit 1; }
 sudo "$YMAP" "scan.ini" | awk -F, '$3<128{print $1","$2}' | tee -a "output$today.txt" | awk -F, '$2>=32 && !seen[(p=substr($1,1,9))]++{print p"::/32"}' > prefix32.txt
-
-
 
 REPEAT=256 LIMIT=48 INPUT="prefix32.txt" generate_ini_file
 [[ ! -f "scan.ini" ]] && { echo "Error: scan.ini not found" >&2; exit 1; }
