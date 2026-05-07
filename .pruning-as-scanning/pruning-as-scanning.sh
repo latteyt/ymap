@@ -68,6 +68,6 @@ REPEAT=1024 LIMIT=32 INPUT="prefix24.txt" generate_ini_file
 [[ ! -f "scan.ini" ]] && { echo "Error: scan.ini not found" >&2; exit 1; }
 sudo "$YMAP" "scan.ini" | awk -F, '$3<128{print $1","$2}' | tee -a "output$today.txt" | awk -F, '$2>=32 && !seen[(p=substr($1,1,9))]++{print p"::/32"}' > prefix32.txt
 
-REPEAT=256 LIMIT=48 INPUT="prefix32.txt" generate_ini_file
+REPEAT=64 LIMIT=48 INPUT="prefix32.txt" generate_ini_file
 [[ ! -f "scan.ini" ]] && { echo "Error: scan.ini not found" >&2; exit 1; }
 sudo "$YMAP" "scan.ini" | awk -F, '$3<128{print $1","$2}' | tee -a "output$today.txt" | awk -F, '$2>=48 && !seen[(p=substr($1,1,14))]++{print p"::/48"}' > prefix48.txt
