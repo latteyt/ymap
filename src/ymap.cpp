@@ -1,6 +1,7 @@
 
 #include <arpa/inet.h>
 #include <chrono>
+#include <cstdio>
 #include <filesystem>
 #include <format>
 #include <fstream>
@@ -71,9 +72,9 @@ int main(int argc, char *argv[]) {
     conf.probe_module = it->second;
   }
   {
-    auto path = pt.get<std::string>("Scan.input");
+    auto path = pt.get<std::string>("Scan.input", "IANA");
     std::ifstream in(path);
-    if (!in.is_open())
+    if (path != "IANA" && !in.is_open())
       throw std::runtime_error("Invalid Input Path");
     conf.input = path;
   }
