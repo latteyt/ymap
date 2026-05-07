@@ -59,7 +59,7 @@ cmake --build build
 YMap 只接收一个 INI 配置文件路径作为参数。
 
 示例配置：
-- [`config_ips.ini`](./config_ips.ini) 对应带 `tcp6_syn` 的 `ip` 模式
+- [`config_ips.ini`](./config_ips.ini) 对应带 `udp6_coap` 的 `ip` 模式
   ```ini
   [Interface]
   l3_src  = 2408:8445:513:26be:6b61:58b5:408:1f62
@@ -68,7 +68,7 @@ YMap 只接收一个 INI 配置文件路径作为参数。
 
   [Runtime]
   shard   = 2
-  rate    = 10
+  rate    = 20000
   repeat  = 1
 
   [Scan]
@@ -341,7 +341,7 @@ bash .pruning-as-scanning/pruning-as-scanning.sh
 
 运行前请先设置 `IF_NAME`，指定用于探测的网络接口。
 
-脚本当前会生成 `prefix24.txt`、`prefix32.txt`、`prefix48.txt`，以及按日期命名的 `outputYYYYMMDD.txt` 日志文件，均位于 `.pruning-as-scanning/` 下。
+脚本当前会生成 `prefix24.txt`、`prefix32.txt`、`prefix40.txt`、`prefix48.txt`，以及按日期命名的 `outputYYYYMMDD.txt` 日志文件，均位于 `.pruning-as-scanning/` 下。
 
 由于使用常规工具对大规模结果集去重可能较慢，作者提供了一个基于 Blocked Bloom Filter 的专用工具：[buniq](https://github.com/latteyt/buniq)
 

@@ -23,7 +23,7 @@ It currently uses:
 ## Processing
 
 The script uses a shell pipeline with `awk` to filter scan output and derive
-`prefix24.txt`, `prefix32.txt`, and `prefix48.txt`.
+`prefix24.txt`, `prefix32.txt`, `prefix40.txt`, and `prefix48.txt`.
 
 ## Inputs
 

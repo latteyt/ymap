@@ -1,14 +1,15 @@
 #!/bin/bash
 
+set -euo pipefail
 
-cd "$(dirname "$0")" || { echo "Failed to changed directory" >&2; exit 1; }
+cd "$(dirname "$0")" || { echo "Failed to change directory" >&2; exit 1; }
 
 YMAP="../build/ymap"
 [[ ! -x "$YMAP" ]] && { echo "Error: $YMAP not found" >&2; exit 1; }
 
-[[ -z "$IF_NAME" ]] && echo "Error: environment variable 'IF_NAME' is not set" >&2 && exit 1
-L3_SRC=$(ip -6 addr show dev "$IF_NAME" | grep "inet6" | grep "global" | awk 'NR==1 {print $2}' | cut -d'/' -f1)
-L2_DST=$(ip -6 neigh show dev "$IF_NAME" | grep "router" | grep -E 'STALE|REACHABLE' |  awk 'NR==1 {print $3}')
+[[ -z "${IF_NAME:-}" ]] && echo "Error: environment variable 'IF_NAME' is not set" >&2 && exit 1
+L3_SRC=$(ip -6 addr show dev "$IF_NAME" | grep "inet6" | grep "global" | awk 'NR==1 {print $2}' | cut -d'/' -f1 || true)
+L2_DST=$(ip -6 neigh show dev "$IF_NAME" | grep "router" | grep -E 'STALE|REACHABLE' | awk 'NR==1 {print $3}' || true)
 [[ -z "$L3_SRC" ]] && echo "Error: no global IPv6 address on $IF_NAME" >&2 && exit 1
 [[ -z "$L2_DST" ]] && echo "Error: no router neighbor found on $IF_NAME" >&2 && exit 1
 
@@ -46,11 +47,9 @@ EOF
 # Scan from shorter prefixes to longer prefixes, pruning redundant space after
 # each round before generating the next round's input list.
 
-# Keep only prefixes whose responses share the same prefix fingerprint.
+# Keep only prefixes whose `probe target` and `responsive IP` share the same prefix (we record its `common_prefix_length`).
 # This is the pruning step that decides which prefixes should be explored deeper.
-# `filter` checks whether the discovered periphery and the target address
-# belong to the same IPv6 prefix. Since IPv6 forwarding is prefix-based,
-# this helps decide whether the prefix should be explored further.
+# Since IPv6 forwarding is prefix-based, this helps decide whether the prefix should be explored further.
 #
 # icmp6_echo output fields : ip, common_prefix_length, ...
 
@@ -68,6 +67,10 @@ REPEAT=1024 LIMIT=32 INPUT="prefix24.txt" generate_ini_file
 [[ ! -f "scan.ini" ]] && { echo "Error: scan.ini not found" >&2; exit 1; }
 sudo "$YMAP" "scan.ini" | awk -F, '$3<128{print $1","$2}' | tee -a "output$today.txt" | awk -F, '$2>=32 && !seen[(p=substr($1,1,9))]++{print p"::/32"}' > prefix32.txt
 
-REPEAT=64 LIMIT=48 INPUT="prefix32.txt" generate_ini_file
+REPEAT=256 LIMIT=40 INPUT="prefix32.txt" generate_ini_file
+[[ ! -f "scan.ini" ]] && { echo "Error: scan.ini not found" >&2; exit 1; }
+sudo "$YMAP" "scan.ini" | awk -F, '$3<128{print $1","$2}' | tee -a "output$today.txt" | awk -F, '$2>=40 && !seen[(p=substr($1,1,12))]++{print p"00::/40"}' > prefix40.txt
+
+REPEAT=64 LIMIT=48 INPUT="prefix40.txt" generate_ini_file
 [[ ! -f "scan.ini" ]] && { echo "Error: scan.ini not found" >&2; exit 1; }
 sudo "$YMAP" "scan.ini" | awk -F, '$3<128{print $1","$2}' | tee -a "output$today.txt" | awk -F, '$2>=48 && !seen[(p=substr($1,1,14))]++{print p"::/48"}' > prefix48.txt
