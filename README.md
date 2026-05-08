@@ -71,6 +71,7 @@ Example configs:
   shard   = 2
   rate    = 20000
   repeat  = 1
+  silent  = false
 
   [Scan]
   type    = ip
@@ -124,6 +125,7 @@ Use these fields:
 | `rate` | Probe rate in packets per second | `10000` |
 | `repeat` | Number of repetitions | `1` |
 | `shard` | Sender thread count | `1` |
+| `silent` | Disable monitor output | `false` |
 
 #### `net` mode
 
