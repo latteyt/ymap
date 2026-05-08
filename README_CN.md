@@ -70,6 +70,7 @@ YMap 只接收一个 INI 配置文件路径作为参数。
   shard   = 2
   rate    = 20000
   repeat  = 1
+  silent  = false
 
   [Scan]
   type    = ip
@@ -123,6 +124,7 @@ YMap 只接收一个 INI 配置文件路径作为参数。
 | `rate` | 每秒探测包数量 | `10000` |
 | `repeat` | 重复扫描次数 | `1` |
 | `shard` | 发送线程数 | `1` |
+| `silent` | 关闭监控输出 | `false` |
 
 #### `net` 模式
 

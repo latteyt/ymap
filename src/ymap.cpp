@@ -49,6 +49,8 @@ int main(int argc, char *argv[]) {
     throw std::runtime_error("Invalid L3Src");
 
   // Runtime
+  conf.silent =
+      pt.get<bool>("Runtime.silent", false); // default show monitor info
   conf.rate = pt.get<size_t>("Runtime.rate", 10000); // default 10kpps
   conf.repeat = pt.get<size_t>("Runtime.repeat", 1); // default once
   conf.shard =

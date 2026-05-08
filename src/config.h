@@ -20,6 +20,7 @@ struct config_t {
   size_t shard;
   size_t rate;
   size_t repeat;
+  bool silent; // default false
 
   // Scan
   std::string type;
