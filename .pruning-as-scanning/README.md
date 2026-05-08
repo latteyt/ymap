@@ -28,6 +28,7 @@ The script uses a shell pipeline with `awk` to filter scan output and derive
 ## Inputs
 
 - `IF_NAME` is required.
+- `DATA_PATH` is required.
 - Optional environment variables:
   - `SCAN_RATE` (default: `100000`)
   - `SHARD` (default: `1`)
@@ -35,7 +36,9 @@ The script uses a shell pipeline with `awk` to filter scan output and derive
 
 ## Outputs
 
-The script writes generated configs and intermediate results under
-`.pruning-as-scanning/`, including a dated `outputYYYYMMDD.txt` log.
+The script writes generated configs under `.pruning-as-scanning/`.
+The resulting `prefix24.txt`, `prefix32.txt`, `prefix40.txt`, `prefix48.txt`,
+and `prefix56.txt` are written under `${DATA_PATH}/YYYYMMDD/`.
+The dated `outputYYYYMMDD.txt` log stays under `.pruning-as-scanning/`.
 
 The resulting files can be deduplicated with [buniq](https://github.com/latteyt/buniq).

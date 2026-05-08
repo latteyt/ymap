@@ -345,9 +345,9 @@ To reproduce the experiments described in the paper, run the helper script locat
 bash .pruning-as-scanning/pruning-as-scanning.sh
 ```
 
-Before running it, set `IF_NAME` to the network interface used for probing.
+Before running it, set `IF_NAME` to the network interface used for probing and `DATA_PATH` to the base output directory.
 
-The script currently produces `prefix24.txt`, `prefix32.txt`, `prefix40.txt`, `prefix48.txt`, and a dated `outputYYYYMMDD.txt` log under `.pruning-as-scanning/`.
+The script currently produces `prefix24.txt`, `prefix32.txt`, `prefix40.txt`, `prefix48.txt`, and `prefix56.txt` under `${DATA_PATH}/YYYYMMDD/`, plus a dated `outputYYYYMMDD.txt` log under `.pruning-as-scanning/`.
 
 Deduplicating large result sets with standard tools can be slow, so the author provides a specialized utility based on a blocked Bloom filter: [buniq](https://github.com/latteyt/buniq)
 
