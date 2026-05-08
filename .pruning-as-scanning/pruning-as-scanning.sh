@@ -7,6 +7,11 @@ cd "$(dirname "$0")" || { echo "Failed to change directory" >&2; exit 1; }
 YMAP="../build/ymap"
 [[ ! -x "$YMAP" ]] && { echo "Error: $YMAP not found" >&2; exit 1; }
 
+
+
+
+[[ -z "${DATA_PATH:-}" ]] && echo "Error: environment variable 'DATA_PATH' is not set" >&2 && exit 1
+
 [[ -z "${IF_NAME:-}" ]] && echo "Error: environment variable 'IF_NAME' is not set" >&2 && exit 1
 L3_SRC=$(ip -6 addr show dev "$IF_NAME" | grep "inet6" | grep "global" | awk 'NR==1 {print $2}' | cut -d'/' -f1 || true)
 L2_DST=$(ip -6 neigh show dev "$IF_NAME" | grep "router" | grep -E 'STALE|REACHABLE' | awk 'NR==1 {print $3}' || true)
@@ -54,23 +59,25 @@ EOF
 # icmp6_echo output fields : ip, common_prefix_length, ...
 
 today=$(date +%Y%m%d)
+data_dir="${DATA_PATH}/${today}"
+output_file="${data_dir}/output${today}.txt"
 
-rm -f scan.ini "output$today.txt"
-
-
+mkdir -p "$data_dir"
 
 REPEAT=4096 LIMIT=24 generate_ini_file
 [[ ! -f "scan.ini" ]] && { echo "Error: scan.ini not found" >&2; exit 1; }
-sudo "$YMAP" "scan.ini" | awk -F, '$3<128{print $1","$2}' | tee -a "output$today.txt" | awk -F, '$2>=24 && !seen[(p=substr($1,1,7))]++{print p"00::/24"}' > prefix24.txt
+sudo "$YMAP" "scan.ini" | awk -F, '$3<128{print $1","$2}' | tee -a "$output_file" | awk -F, '$2>=24 && !seen[(p=substr($1,1,7))]++{print p"00::/24"}' > "${data_dir}/prefix24.txt"
 
-REPEAT=1024 LIMIT=32 INPUT="prefix24.txt" generate_ini_file
+REPEAT=1024 LIMIT=32 INPUT="${data_dir}/prefix24.txt" generate_ini_file
 [[ ! -f "scan.ini" ]] && { echo "Error: scan.ini not found" >&2; exit 1; }
-sudo "$YMAP" "scan.ini" | awk -F, '$3<128{print $1","$2}' | tee -a "output$today.txt" | awk -F, '$2>=32 && !seen[(p=substr($1,1,9))]++{print p"::/32"}' > prefix32.txt
+sudo "$YMAP" "scan.ini" | awk -F, '$3<128{print $1","$2}' | tee -a "$output_file" | awk -F, '$2>=32 && !seen[(p=substr($1,1,9))]++{print p"::/32"}' > "${data_dir}/prefix32.txt"
 
-REPEAT=256 LIMIT=40 INPUT="prefix32.txt" generate_ini_file
+REPEAT=256 LIMIT=40 INPUT="${data_dir}/prefix32.txt" generate_ini_file
 [[ ! -f "scan.ini" ]] && { echo "Error: scan.ini not found" >&2; exit 1; }
-sudo "$YMAP" "scan.ini" | awk -F, '$3<128{print $1","$2}' | tee -a "output$today.txt" | awk -F, '$2>=40 && !seen[(p=substr($1,1,12))]++{print p"00::/40"}' > prefix40.txt
+sudo "$YMAP" "scan.ini" | awk -F, '$3<128{print $1","$2}' | tee -a "$output_file" | awk -F, '$2>=40 && !seen[(p=substr($1,1,12))]++{print p"00::/40"}' > "${data_dir}/prefix40.txt"
 
-REPEAT=64 LIMIT=48 INPUT="prefix40.txt" generate_ini_file
+REPEAT=64 LIMIT=48 INPUT="${data_dir}/prefix40.txt" generate_ini_file
 [[ ! -f "scan.ini" ]] && { echo "Error: scan.ini not found" >&2; exit 1; }
-sudo "$YMAP" "scan.ini" | awk -F, '$3<128{print $1","$2}' | tee -a "output$today.txt" | awk -F, '$2>=48 && !seen[(p=substr($1,1,14))]++{print p"::/48"}' > prefix48.txt
+sudo "$YMAP" "scan.ini" | awk -F, '$3<128{print $1","$2}' | tee -a "$output_file" | awk -F, '$2>=48 && !seen[(p=substr($1,1,14))]++{print p"::/48"}' > "${data_dir}/prefix48.txt"
+
+rm -f scan.ini
