@@ -339,9 +339,9 @@ Pruning-as-Scanning 是一种用于在互联网规模上发现 IPv6 网络边缘
 bash .pruning-as-scanning/pruning-as-scanning.sh
 ```
 
-运行前请先设置 `IF_NAME`，指定用于探测的网络接口。
+运行前请先设置 `IF_NAME`，指定用于探测的网络接口，并设置 `DATA_PATH` 作为输出根目录。
 
-脚本当前会生成 `prefix24.txt`、`prefix32.txt`、`prefix40.txt`、`prefix48.txt`，以及按日期命名的 `outputYYYYMMDD.txt` 日志文件，均位于 `.pruning-as-scanning/` 下。
+脚本当前会生成 `prefix24.txt`、`prefix32.txt`、`prefix40.txt`、`prefix48.txt`、`prefix56.txt`，位于 `${DATA_PATH}/YYYYMMDD/` 目录下，并在 `.pruning-as-scanning/` 下保留按日期命名的 `outputYYYYMMDD.txt` 日志文件。
 
 由于使用常规工具对大规模结果集去重可能较慢，作者提供了一个基于 Blocked Bloom Filter 的专用工具：[buniq](https://github.com/latteyt/buniq)
 
