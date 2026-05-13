@@ -1,7 +1,6 @@
 #ifndef PROBE_MODULE_H
 #define PROBE_MODULE_H
 #include <cstddef>
-#include <cstdint>
 #include <netinet/in.h>
 #include <string>
 #include <string_view>
@@ -11,7 +10,7 @@ struct probe_module_t {
   bool (*module_init)();
   void (*module_clear)();
   size_t (*make_packet)(unsigned char *, struct in6_addr *);
-  void (*handle_packet)(const unsigned char *, size_t);
+  void (*handle_packet)(const unsigned char *);
   bool (*validate_packet)(const unsigned char *, size_t);
   std::string pcap_filter;
 };

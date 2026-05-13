@@ -35,6 +35,17 @@
 #include "ratelimiter.hpp"
 #include "state.h"
 
+const std::vector<std::string> IANA = {
+    "2001::/23",      "2001:200::/23",  "2001:400::/23",  "2001:600::/23",
+    "2001:800::/22",  "2001:c00::/23",  "2001:e00::/23",  "2001:1200::/23",
+    "2001:1400::/22", "2001:1800::/23", "2001:1a00::/23", "2001:1c00::/22",
+    "2001:2000::/19", "2001:4000::/23", "2001:4200::/23", "2001:4400::/23",
+    "2001:4600::/23", "2001:4800::/23", "2001:4a00::/23", "2001:4c00::/23",
+    "2001:5000::/20", "2001:8000::/19", "2001:a000::/20", "2001:b000::/20",
+    "2003::/18",      "2400::/12",      "2410::/12",      "2600::/12",
+    "2610::/23",      "2620::/23",      "2630::/12",      "2800::/12",
+    "2a00::/12",      "2a10::/12",      "2c00::/12",
+};
 union range_t {
   // net
   struct {
@@ -54,19 +65,34 @@ public:
     /* inital our perfix vector */
     this->space = 0;
     if (conf.type == "net") {
-      std::ifstream in(conf.input);
-      std::string line;
-      while (std::getline(in, line)) {
-        auto net = boost::asio::ip::make_network_v6(line);
-        if (conf.limit < net.prefix_length())
-          continue;
-        uint64_t len = net.prefix_length();
-        auto nbytes = net.network().to_bytes();
-        uint64_t stun = std::accumulate(
-            nbytes.begin(), nbytes.begin() + 8, uint64_t{0},
-            [](uint64_t acc, uint8_t byte) { return (acc << 8) | byte; });
-        this->ranges.push_back({.stun = stun, .count = this->space});
-        this->space += (1ULL << (conf.limit - len));
+      if (conf.input == "IANA") {
+        for (const auto &line : IANA) {
+          auto net = boost::asio::ip::make_network_v6(line);
+          if (conf.limit < net.prefix_length())
+            continue;
+          uint64_t len = net.prefix_length();
+          auto nbytes = net.network().to_bytes();
+          uint64_t stun = std::accumulate(
+              nbytes.begin(), nbytes.begin() + 8, uint64_t{0},
+              [](uint64_t acc, uint8_t byte) { return (acc << 8) | byte; });
+          this->ranges.push_back({.stun = stun, .count = this->space});
+          this->space += (1ULL << (conf.limit - len));
+        }
+      } else {
+        std::ifstream in(conf.input);
+        std::string line;
+        while (std::getline(in, line)) {
+          auto net = boost::asio::ip::make_network_v6(line);
+          if (conf.limit < net.prefix_length())
+            continue;
+          uint64_t len = net.prefix_length();
+          auto nbytes = net.network().to_bytes();
+          uint64_t stun = std::accumulate(
+              nbytes.begin(), nbytes.begin() + 8, uint64_t{0},
+              [](uint64_t acc, uint8_t byte) { return (acc << 8) | byte; });
+          this->ranges.push_back({.stun = stun, .count = this->space});
+          this->space += (1ULL << (conf.limit - len));
+        }
       }
     } else {
       std::ifstream in(conf.input);
@@ -79,6 +105,8 @@ public:
 
       size_t total_size = std::filesystem::file_size(conf.input);
       size_t shard_line = total_line / conf.shard;
+      if (shard_line == 0)
+        throw std::runtime_error("Input lines are fewer than shards");
       size_t count = 0;
       do {
         if (count % shard_line == 0)
@@ -191,20 +219,22 @@ public:
         auto beg = this->ranges[offset].beg;
         auto end = this->ranges[offset].end;
         std::ifstream in(conf.input);
-        in.seekg(beg);
         std::string line;
-
-        while (static_cast<size_t>(in.tellg()) < end &&
-               std::getline(in, line)) {
-          if (inet_pton(AF_INET6, line.c_str(), &l3_dst) == 1) {
-            size_t len = conf.probe_module->make_packet(tx_buf, &l3_dst);
-            rate_limiter.pass();
-            if (sendto(fd, tx_buf, len, 0, (struct sockaddr *)&tx_sockaddr,
-                       sizeof(struct sockaddr_ll)) < 0)
-              throw std::system_error(errno, std::system_category(),
-                                      "sendto() failed");
+        for (size_t _ = 0; _ < conf.repeat; ++_) {
+          in.clear();
+          in.seekg(beg);
+          while (static_cast<size_t>(in.tellg()) < end &&
+                 std::getline(in, line)) {
+            if (inet_pton(AF_INET6, line.c_str(), &l3_dst) == 1) {
+              size_t len = conf.probe_module->make_packet(tx_buf, &l3_dst);
+              rate_limiter.pass();
+              if (sendto(fd, tx_buf, len, 0, (struct sockaddr *)&tx_sockaddr,
+                         sizeof(struct sockaddr_ll)) < 0)
+                throw std::system_error(errno, std::system_category(),
+                                        "sendto() failed");
+            }
+            state.total_sent.fetch_add(1, std::memory_order_relaxed);
           }
-          state.total_sent.fetch_add(1, std::memory_order_relaxed);
         }
       }
     });
