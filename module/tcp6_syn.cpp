@@ -33,6 +33,9 @@ static std::string to_string(const struct in6_addr *ip) {
 }
 
 static bool module_init() {
+  if (conf.th_dport == 0)
+    return false;
+
   if (conf.output.empty()) {
     file = stdout;
   } else {
@@ -116,8 +119,8 @@ static size_t make_packet(unsigned char *tx_buf, struct in6_addr *l3_dst) {
   std::memcpy(&ip6h->ip6_dst, l3_dst, sizeof(struct in6_addr));
 
   /* calculate the src port */
-  tcph->th_sport = htons(static_cast<uint16_t>(cal_sign(&ip6h->ip6_dst,
-                                                         &ip6h->ip6_src)));
+  tcph->th_sport =
+      htons(static_cast<uint16_t>(cal_sign(&ip6h->ip6_dst, &ip6h->ip6_src)));
 
   /* calculate the checksum */
   uint32_t sum = 0;

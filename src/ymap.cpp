@@ -101,12 +101,7 @@ int main(int argc, char *argv[]) {
       throw std::runtime_error("IID Mode Not Parsed");
     conf.iid = iid;
   }
-  if (conf.probe_module->name == "tcp6_syn") {
-    conf.th_dport = pt.get<uint16_t>("Optional.th_dport", 80);
-    if (conf.th_dport == 0)
-      throw std::runtime_error("Invalid dst_port");
-  }
-
+  conf.th_dport = pt.get<uint16_t>("Optional.th_dport", 80);
   if (!conf.probe_module->module_init())
     throw std::runtime_error("Probe Module Init Failed");
 
