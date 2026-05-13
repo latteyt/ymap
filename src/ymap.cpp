@@ -107,7 +107,8 @@ int main(int argc, char *argv[]) {
       throw std::runtime_error("Invalid dst_port");
   }
 
-  conf.probe_module->module_init();
+  if (!conf.probe_module->module_init())
+    throw std::runtime_error("Probe Module Init Failed");
 
   receiver_t receiver{};
   sender_t sender{};
