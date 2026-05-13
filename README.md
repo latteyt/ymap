@@ -1,182 +1,236 @@
-# YMap: Yet Another ZMap for IPv6
+# YMap: Yet-another ZMap for IPv6
 
 ![YMap Screenshot](screenshot.png)
 
 > **中文说明** | [简体中文](README_CN.md)
 
-## Overview
+YMap is a modular IPv6 single-packet scanner written in modern C++.
 
-YMap is a **Moduler IPv6 Single-packet Scanner** written in **modern C++**. While primarily designed for **Internet-wide IPv6 Network Periphery Discovery**, it is also suitable for various IPv6 scanning activities including network research, security assessments, and topology analysis.
+It is designed for Internet-wide IPv6 periphery discovery, and it is also useful for IPv6 research, security testing, and topology analysis.
 
-This tool is the implementation of the research paper:
+This project implements the paper:
 
 > **Pruning as Scanning: Towards Internet-Wide IPv6 Network Periphery Discovery**
 > IEEE INFOCOM 2025
-> [[Paper]](https://ieeexplore.ieee.org/document/11044733)
+> [Paper](https://ieeexplore.ieee.org/document/11044733)
+
 
 ## Features
 
-- **Single-packet Scanning**: One probe packet per target for efficient, high-speed scanning
-- **Modern C++20**: Written from scratch in clean, modern C++ code
-- **Two Scanning Modes**: Support for prefix-level scanning and IP-level scanning
-- **Modular Architecture**: Pluggable probe modules for custom payloads (ICMPv6, UDP, etc.)
-- **High Performance**: Multi-threaded sending with configurable rate limiting (token bucket algorithm)
-- **IPv6 Native**: Purpose-built for IPv6 address space scanning
-- **Configurable**: INI-based configuration with comprehensive parameters
-- **Real-time Monitoring**: Live statistics display (packets sent/received, drop rate, ETA)
-- **Flexible IID Generation**: Random or fixed Interface Identifiers for targeted scanning
+- Single-packet scanning
+- Two scan modes: `net` and `ip`
+- Pluggable probe modules
+- Multi-threaded sending with rate limiting
+- Real-time monitoring
+- INI-based configuration
 
-## Requirements
+## Build
 
-### Build Dependencies
+Requirements:
 
-- CMake >= 3.20
-- C++20 compatible compiler (GCC/Clang)
-- libpcap development libraries
+- CMake 3.20+
+- A C++20 compiler
+- libpcap development headers
+- Boost libraries
+- Linux
 
-### System Dependencies
+Install on Debian/Ubuntu:
 
-- Linux kernel (for AF_PACKET sockets)
-- Boost libraries (Boost.Hash, Boost.PropertyTree)
-
-### Installation
-
-On Debian/Ubuntu:
 ```bash
 sudo apt-get install build-essential cmake libpcap-dev libboost-dev
 ```
 
-On Fedora/RHEL:
+Install on Fedora:
+
 ```bash
-sudo dnf install gcc-c++ cmake libpcap-devel libboost-devel
+sudo dnf install gcc-c++ cmake libpcap-devel boost-devel
 ```
 
-## Building
+Build:
 
 ```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake -S . -B build
 cmake --build build
 ```
 
-The binary will be created at `build/ymap`.
+Binary: `build/ymap`
 
-## Usage
+## Configuration
 
-YMap uses an **INI-style** configuration file to specify runtime parameters and scanning behavior.
+YMap takes one INI file path as its only argument.
 
-### Scanning Modes
+Example configs:
+- [`config_ips.ini`](./config_ips.ini) for `ip` mode with `udp6_coap`
+  ```ini
+  [Interface]
+  name    = eth0
+  l2_dst  = 00:11:22:33:44:55
+  l3_src  = 2001:db8::1
 
-YMap supports two scanning modes:
+  [Runtime]
+  shard   = 2
+  rate    = 20000
+  repeat  = 1
+  silent  = false
 
-| Mode | Description | Input File Format |
-|------|-------------|-------------------|
-| `net` | **Prefix-level scanning**: Generate and scan addresses at specified depth from input prefix list | IPv6 prefixes (e.g., `2001:db8::/32`) |
-| `ip` | **IP-level scanning**: Directly scan each IPv6 address from input file | Full IPv6 addresses (e.g., `2001:db8::1`) |
+  [Scan]
+  type    = ip
+  module  = tcp6_syn
+  input   = other/ips
 
-### Configuration Reference
+  [Optional]
+  th_dport = 80
+  ```
+- [`config_net.ini`](./config_net.ini) for `net` mode
+  ```ini
+  [Interface]
+  name    = eth0
+  l2_dst  = 00:11:22:33:44:55
+  l3_src  = 2001:db8::1
 
-Create a configuration file (e.g., `config.ini`) with the following sections:
+  [Runtime]
+  shard   = 2
+  rate    = 200000
+  repeat  = 1
 
-#### `[Net]` - Network Settings
+  [Scan]
+  type    = net
+  module  = icmp6_echo
+  input   = IANA
+  output  = output.txt
 
-| Parameter | Description | Example |
-|-----------|-------------|---------|
-| `L3Src` | Source IPv6 address | `2001:db8::1` |
-| `L2Dst` | Gateway MAC address | `aa:bb:cc:dd:ee:ff` |
-| `IF` | Network interface name | `eth0` |
+  [Optional]
+  limit   = 64
+  iid     = rand
+  ```
 
-#### `[Runtime]` - Runtime Settings
+### `[Interface]`
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `seed` | Random seed for LCG address generation (net mode only) | 42 |
-| `rate` | Probe rate (packets per second) | 10000 |
-| `limit` | Prefix length limit to scan (net mode only, max 64) | 48 |
-| `repeat` | Number of scan repetitions | 1 |
-| `shard` | Number of sender threads (must be power of 2) | 1 |
+These fields are used in both `ip` and `net` modes.
 
-#### `[Scan]` - Scan Configuration
+| Key | Meaning |
+|---|---|
+| `name` | Network interface name |
+| `l2_dst` | Destination MAC address |
+| `l3_src` | Source IPv6 address |
 
-| Parameter | Description | Example |
-|-----------|-------------|---------|
-| `type` | Scan type: `net` or `ip` | `net` |
-| `module` | Probe module name | `icmpv6echo` |
-| `input` | Input file path | `prefix` or `ips.txt` |
-| `output` | Output file path (defaults to stdout if not specified) | `output.txt` |
-| `iid` | Interface Identifier (IID) mode (net mode only): `rand`, decimal (`0`), or hex (`0x1`) | `rand` |
+### `[Runtime]`
 
-### Example Configuration
+#### `ip` mode
 
-#### Prefix-level Scanning (net mode)
+Use these fields:
 
-```ini
-[Net]
-L3Src   = 2001:db8::1
-L2Dst   = aa:bb:cc:dd:ee:ff
-IF      = eth0
+| Key | Meaning | Default |
+|---|---|---|
+| `rate` | Probe rate in packets per second | `10000` |
+| `repeat` | Number of repetitions | `1` |
+| `shard` | Sender thread count | `1` |
+| `silent` | Disable monitor output | `false` |
 
-[Runtime]
-seed    = 12345
-rate    = 10000
-limit   = 48
-repeat  = 1
-shard   = 4
+#### `net` mode
 
-[Scan]
-type    = net
-module  = icmpv6echo
-input   = prefix
-output  = output.txt
-iid     = rand
-```
+Use the same fields as `ip` mode.
 
-#### IP-level Scanning (ip mode)
 
-```ini
-[Net]
-L3Src   = 2001:db8::1
-L2Dst   = aa:bb:cc:dd:ee:ff
-IF      = eth0
+### `[Scan]`
 
-[Runtime]
-rate    = 10000
-repeat  = 1
-shard   = 4
+#### `ip` mode
 
-[Scan]
-type    = ip
-module  = icmpv6echo
-input   = ips.txt
-output  = output.txt
-```
+Use these fields:
 
-### Input File Format
+| Key | Meaning |
+|---|---|
+| `type` | Must be `ip` |
+| `module` | Probe module name |
+| `input` | Input file path |
+| `output` | Output file path, optional |
 
-#### net mode: Prefix file
+#### `net` mode
 
-One IPv6 prefix per line:
+Use these fields:
 
-```
-2001:16f8::/32
+| Key | Meaning |
+|---|---|
+| `type` | Must be `net` |
+| `module` | Probe module name |
+| `input` | Input file path or `IANA` |
+| `output` | Output file path, optional |
+
+
+`Scan.input` may be omitted or set to `IANA`; in that case YMap uses its built-in prefix set.
+
+### `[Optional]`
+
+Use these fields for `net` mode and `tcp6_syn`.
+
+| Key | Meaning | Default |
+|---|---|---|
+| `seed` | Random seed for prefix traversal | omitted, generated internally |
+| `limit` | Prefix expansion depth | required |
+| `iid` | IID mode for `net` mode | required |
+| `th_dport` | TCP destination port for `tcp6_syn` | `80` |
+
+## Scan Modes
+
+### `net`
+
+Reads one IPv6 prefix per line and expands each prefix to the configured `Optional.limit`.
+If `Scan.input` is omitted or set to `IANA`, YMap uses its built-in prefix set.
+
+Example input:
+
+```text
+2001:db8::/32
 2a00:1620::/32
-2001:067c:12e8::/48
 ```
 
-With the `limit` parameter, YMap expands each input prefix to the specified depth. For example, with `limit = 48`, `2001:db8::/32` generates 2^16 = 65536 addresses.
+### `ip`
 
-#### ip mode: IP file
+Reads one IPv6 address per line and scans addresses directly.
 
-One IPv6 address per line:
+Example input:
 
-```
+```text
 2001:db8::1
 2001:db8::2
-2001:db8::ffff:ffff:ffff:ffff
 ```
 
-## Output Format
+## Built-in Modules
 
-The output format is defined by each probe module's `handle_packet` function. Different modules can output different fields and formats based on their specific requirements. Refer to the module implementation for the exact output format.
+### `icmp6_echo`
+
+Sends ICMPv6 Echo Request probes.
+
+Output fields:
+
+- target address
+- responder address
+- ICMPv6 type
+- ICMPv6 code
+- hop count estimate
+- elapsed time
+
+### `udp6_coap`
+
+Sends UDP probes to CoAP port `5683` with a fixed `/.well-known/core` request payload.
+
+Output fields:
+
+- responder IPv6 address
+- source port
+- CoAP response class/detail
+
+### `tcp6_syn`
+
+Sends TCP SYN probes to the configured destination port.
+
+Output fields:
+
+- responder IPv6 address
+- source port
+- TCP flags
+- state (`open`, `close`, or `other`)
+
 
 ## Architecture
 
@@ -184,139 +238,66 @@ The output format is defined by each probe module's `handle_packet` function. Di
 
 YMap uses a multi-threaded architecture:
 
-1. **Sender Threads**: Probe target addresses with rate limiting (token bucket)
-2. **Receiver Thread**: Capture response packets using libpcap
-3. **Monitor Thread**: Display real-time statistics
+1. Sender threads probe target addresses with rate limiting.
+2. Receiver thread captures response packets using libpcap.
+3. Monitor thread displays real-time statistics.
 
 ### Probe Module System
 
-YMap features a modular probe system that allows **custom payload design**. Each module implements the `probe_module_t` interface:
+YMap uses a modular probe system for custom payloads. Each module implements `probe_module_t`:
 
 ```cpp
 struct probe_module_t {
-  std::string name;                                     // Module name
-  bool (*module_init)();                                // Initialization
-  void (*module_clear)();                               // Cleanup
-  size_t (*make_packet)(unsigned char*, struct in6_addr*);  // Build probe packet
-  void (*handle_packet)(const unsigned char*, size_t);  // Process response
-  bool (*validate_packet)(const unsigned char*, size_t); // Validate response
-  std::string pcap_filter;                              // BPF filter for libpcap
+  std::string name;
+  bool (*module_init)();
+  void (*module_clear)();
+  size_t (*make_packet)(unsigned char *, struct in6_addr *);
+  void (*handle_packet)(const unsigned char *);
+  bool (*validate_packet)(const unsigned char *, size_t);
+  std::string pcap_filter;
 };
 ```
+
+Register a module with `REGISTER_PROBE_MODULE(name)`.
 
 #### Function Lifecycle
 
 | Function | When Called | Purpose |
-|----------|------------|---------|
-| `module_init()` | **Startup** (before scanning begins) | Initialize module state, open output file, allocate resources |
-| `make_packet()` | **Per target** (in sender threads) | Construct probe packet with custom payload for each target address |
-| `validate_packet()` | **Per received packet** (in receiver thread) | Check if packet is a valid response to our probe using hash/sequence matching |
-| `handle_packet()` | **After validation** (in receiver thread) | Extract information from valid response, write to output |
-| `module_clear()` | **Shutdown** (after all scanning completes) | Flush buffers, close files, free resources |
+|---|---|---|
+| `module_init()` | Before scanning begins | Initialize module state, open output file, allocate resources |
+| `make_packet()` | Per target, in sender threads | Build the probe packet |
+| `validate_packet()` | Per received packet, in receiver thread | Check whether the packet matches our probe |
+| `handle_packet()` | After validation, in receiver thread | Extract information from a valid response |
+| `module_clear()` | After scanning completes | Flush buffers, close files, free resources |
 
 #### Writing a Custom Module
 
-1. Implement all function pointers in `probe_module_t`
-2. Use `make_packet()` to construct your probe payload (return packet size)
-3. Use `validate_packet()` to match responses (hash-based or sequence-based)
-4. Use `handle_packet()` to format and output results
-5. Register with `REGISTER_PROBE_MODULE(your_module_name)`
+1. Implement the function pointers in `probe_module_t`.
+2. Use `make_packet()` to construct the probe payload.
+3. Use `validate_packet()` to match responses.
+4. Use `handle_packet()` to format and output results.
+5. Register the module with `REGISTER_PROBE_MODULE(your_module_name)`.
 
-#### Minimal Example
+#### Currently Supported Modules
 
-```cpp
-#include "module_register.hpp"
-#include <netinet/ip6.h>
-#include <netinet/icmp6.h>
-#include <cstring>
-
-static FILE *fp = nullptr;
-
-bool module_init() {
-    // Called once at startup
-    fp = conf.output.empty() ? stdout : fopen(conf.output.c_str(), "w");
-    return fp != nullptr;
-}
-
-void module_clear() {
-    // Called once at shutdown
-    if (fp) { fclose(fp); fp = nullptr; }
-}
-
-size_t make_packet(unsigned char *buf, struct in6_addr *dst) {
-    // Build ICMPv6 Echo Request
-    // Returns: size of packet to send (IPv6 header + payload)
-    auto *ip = (struct ip6_hdr *)buf;
-    auto *icmp = (struct icmp6_hdr *)(ip + 1);
-
-    std::memcpy(&ip->ip6_dst, dst, sizeof(struct in6_addr));      // Target address
-    std::memcpy(&ip->ip6_src, &conf.l3_src, sizeof(struct in6_addr));  // Source address
-    // ... set other IPv6 header fields ...
-
-    icmp->icmp6_type = ICMP6_ECHO_REQUEST;
-    icmp->icmp6_seq = seq;                       // Use seq for matching
-    // ... set ICMPv6 fields and checksum ...
-
-    return sizeof(struct ip6_hdr) + sizeof(struct icmp6_hdr);  // Return packet size
-}
-
-bool validate_packet(const unsigned char *pkt, size_t len) {
-    // Check if packet is a valid response to our probe
-    auto *ip = (struct ip6_hdr *)(pkt + sizeof(struct ethhdr));
-    auto *icmp = (struct icmp6_hdr *)(ip + 1);
-
-    // Match: is this ICMPv6 Echo Reply to our address?
-    if (icmp->icmp6_type != ICMP6_ECHO_REPLY) return false;
-    if (std::memcmp(&ip->ip6_dst, &conf.l3_src, sizeof(struct in6_addr)) != 0) return false;
-
-    return true;
-}
-
-void handle_packet(const unsigned char *pkt, size_t len) {
-    // Process valid response, write output
-    auto *ip = (struct ip6_hdr *)(pkt + sizeof(struct ethhdr));
-    fprintf(fp, "%s\n", inet_ntop(AF_INET6, &ip->ip6_src, buf, sizeof(buf)));
-}
-
-probe_module_t my_module = {
-    .name = "my_module",
-    .module_init = module_init,
-    .module_clear = module_clear,
-    .make_packet = make_packet,
-    .handle_packet = handle_packet,
-    .validate_packet = validate_packet,
-    .pcap_filter = "ip6 && icmp6",
-};
-
-REGISTER_PROBE_MODULE(my_module);
-```
-
-#### Key Points
-
-| Function | Notes |
-|----------|-------|
-| `module_init` | Access global config via `conf` object; return `false` on failure |
-| `make_packet` | **return value is the size of packet to send (L3+payload, excluding L2 header)** |
-| `validate_packet` | Parse Ethernet + IPv6 + protocol header; return `true` if response matches |
-| `handle_packet` | Write results to `fp` (opened in `module_init`); use `conf.output` for filename |
-
-Currently supported modules:
-- **icmpv6echo**: ICMPv6 Echo Request/Reply probing (default)
+- `icmp6_echo`: ICMPv6 Echo Request/Reply probing
+- `udp6_coap`: UDP/CoAP probing
+- `tcp6_syn`: TCP SYN probing
 
 ### Address Generation
 
-#### net mode (Prefix-level Scanning)
+#### `net` mode
 
-YMap uses an **Enhanced** Linear Congruential Generator (LCG) to traverse **Fragmented** IPv6 address spaces, enabling deterministic and efficient address space coverage.
+YMap traverses IPv6 prefix space in a deterministic way and expands each input prefix to the configured `Optional.limit`.
 
 For each input prefix, YMap:
-1. Converts the prefix network address to a starting value (STUN)
-2. Calculates the number of addresses reachable within the `/limit` range
-3. Uses LCG to generate a traversal sequence, ensuring uniform coverage
+1. Converts the prefix network address to a starting value.
+2. Calculates how many addresses are reachable within the `/limit` range.
+3. Uses a traversal sequence to cover the address space.
 
-#### ip mode (IP-level Scanning)
+#### `ip` mode
 
-Simply splits the input file by lines across sender threads, with each thread handling its corresponding line range.
+YMap reads the input file line by line and assigns addresses to sender threads.
 
 ## Troubleshooting
 
@@ -324,31 +305,61 @@ Simply splits the input file by lines across sender threads, with each thread ha
 
 **Permission denied when opening network interface**
 ```bash
-sudo ./build/ymap config.ini
+sudo ./build/ymap config_net.ini
 ```
 
 **No responses received**
-- Verify source IPv6 address is correct and reachable
-- Ensure gateway MAC address is correct
-- Try increasing the rate gradually
+- Verify the source IPv6 address is correct and reachable.
+- Ensure the gateway MAC address is correct.
+- Try increasing the rate gradually.
 
 **libpcap errors**
-- Install libpcap development packages
-- Verify network interface name is correct
+- Install libpcap development packages.
+- Verify the network interface name is correct.
 
 ### Performance Tuning
 
-- Increase `shard` for more sender threads (use power of 2)
-- Adjust `rate` based on network capacity
-- Use appropriate `limit` prefix length to focus scanning (net mode only)
+- Increase `shard` for more sender threads.
+- Adjust `rate` based on network capacity.
+- Use an appropriate `limit` for `net` mode.
 
 ## Contributing
 
 Contributions are welcome. Please ensure:
 
-1. New probe modules follow the `probe_module_t` interface
-2. Code follows existing style conventions
-3. Changes are documented
+1. New probe modules follow the `probe_module_t` interface.
+2. Code follows existing style conventions.
+3. Changes are documented.
+
+
+
+## The Pruning-as-Scanning Strategy
+
+The _Pruning-as-Scanning_ approach is a scanning strategy designed to discover IPv6 network periphery addresses at Internet scale. It focuses on the _last-hop_ devices at IPv6 network periphery, such as gateways and IoT devices.
+
+The core idea is straightforward: send randomly generated probes within a given prefix and wait for responses from IPv6 Network periphery. Although the IPv6 address space is extremely large, **packet forwarding still follows the longest-prefix matching rule**, and _Pruning-as-Scanning_ exploits exactly that property.
+
+When the probe budget is large enough and the sampling is sufficiently uniform, this approach can uncover IPv6 periphery devices across a very large address space with relatively few misses, _without requiring any seeds_. See the paper for the full theory and derivation.
+
+To reproduce the experiments described in the paper, run the helper script located in the repository root:
+
+```bash
+bash .pruning-as-scanning/pruning-as-scanning.sh
+```
+
+Before running it, set `IF_NAME` to the network interface used for probing and `DATA_PATH` to the base output directory.
+
+The script currently produces `prefix24.txt`, `prefix32.txt`, `prefix40.txt`, `prefix48.txt`, and `prefix56.txt` under `${DATA_PATH}/YYYYMMDD/`, plus a dated `outputYYYYMMDD.txt` log under `.pruning-as-scanning/`.
+
+Deduplicating large result sets with standard tools can be slow, so the author provides a specialized utility based on a blocked Bloom filter: [buniq](https://github.com/latteyt/buniq)
+
+Combine these files and run:
+
+```bash
+cat outputYYYYMMDD.txt | cut -d, -f1 | buniq
+```
+
+to obtain the final set of discovered IPv6 network periphery addresses.
 
 ## License
 
@@ -362,7 +373,7 @@ For licensing inquiries, please contact the author.
 
 If you use this tool in your research, please cite:
 
-```
+```text
 @inproceedings{yang2025pruning,
   title={{Pruning as scanning: Towards Internet-wide IPv6 Network Periphery Discovery}},
   author={Yang, Tao and Hu, Ling and Hou, Bingnan and Yang, Zhenzhong and Cai, Zhiping},
@@ -371,13 +382,8 @@ If you use this tool in your research, please cite:
   year={2025},
   organization={IEEE}
 }
-
 ```
 
 ## Status
 
-This software is still under active development. If you encounter any bugs or have feature requests, please report them via [GitHub Issues](https://github.com/latteyt/ymap/issues).
-
-## Contact
-
-For questions or collaboration inquiries, please contact the author directly.
+This software is still under active development. If you encounter bugs or have feature requests, please report them via GitHub Issues.
